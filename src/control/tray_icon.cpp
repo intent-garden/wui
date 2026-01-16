@@ -27,17 +27,17 @@ tray_icon::tray_icon(std::weak_ptr<window> parent__, int32_t icon_resource_index
     {
         my_subscriber_id = parent_->subscribe(std::bind(&tray_icon::receive_event, this, std::placeholders::_1), event_type::internal);
 
-        NOTIFYICONDATA nid;
-        memset(&nid, 0, sizeof(NOTIFYICONDATA));
-        nid.cbSize = sizeof(NOTIFYICONDATA);
+        NOTIFYICONDATAW nid;
+        memset(&nid, 0, sizeof(NOTIFYICONDATAW));
+        nid.cbSize = sizeof(NOTIFYICONDATAW);
         nid.hWnd = parent_->context().hwnd;
         nid.uID = ID;
         nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
         nid.uCallbackMessage = WM_USER;
         nid.uVersion = NOTIFYICON_VERSION_4;
         nid.hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(icon_resource_index));
-        wcscpy_s(nid.szTip, boost::nowide::widen(tip).c_str());
-        Shell_NotifyIcon(NIM_ADD, &nid);
+        wcscpy_s(nid.szTip, 128, boost::nowide::widen(tip).c_str());
+        Shell_NotifyIconW(NIM_ADD, &nid);
     }
 }
 #endif
@@ -58,17 +58,17 @@ tray_icon::tray_icon(std::weak_ptr<window> parent__, std::string_view icon_file_
         my_subscriber_id = parent_->subscribe(std::bind(&tray_icon::receive_event, this, std::placeholders::_1), event_type::internal);
 
 #ifdef _WIN32
-        NOTIFYICONDATA nid;
-        memset(&nid, 0, sizeof(NOTIFYICONDATA));
-        nid.cbSize = sizeof(NOTIFYICONDATA);
+        NOTIFYICONDATAW nid;
+        memset(&nid, 0, sizeof(NOTIFYICONDATAW));
+        nid.cbSize = sizeof(NOTIFYICONDATAW);
         nid.hWnd = parent_->context().hwnd;
         nid.uID = ID;
         nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
         nid.uCallbackMessage = WM_USER;
         nid.uVersion = NOTIFYICON_VERSION_4;
-        nid.hIcon = (HICON)LoadImage(NULL, boost::nowide::widen(icon_file_name).c_str(), IMAGE_ICON, 0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE);
-        wcscpy_s(nid.szTip, boost::nowide::widen(tip).c_str());
-        Shell_NotifyIcon(NIM_ADD, &nid);
+        nid.hIcon = (HICON)LoadImageW(NULL, boost::nowide::widen(icon_file_name).c_str(), IMAGE_ICON, 0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE);
+        wcscpy_s(nid.szTip, 128, boost::nowide::widen(tip).c_str());
+        Shell_NotifyIconW(NIM_ADD, &nid);
 #elif __linux__
 #endif
     }
@@ -82,12 +82,12 @@ tray_icon::~tray_icon()
         parent_->unsubscribe(my_subscriber_id);
 
 #ifdef _WIN32
-        NOTIFYICONDATA nid;
-        memset(&nid, 0, sizeof(NOTIFYICONDATA));
-        nid.cbSize = sizeof(NOTIFYICONDATA);
+        NOTIFYICONDATAW nid;
+        memset(&nid, 0, sizeof(NOTIFYICONDATAW));
+        nid.cbSize = sizeof(NOTIFYICONDATAW);
         nid.hWnd = parent_->context().hwnd;
         nid.uID = ID;
-        Shell_NotifyIcon(NIM_DELETE, &nid);
+        Shell_NotifyIconW(NIM_DELETE, &nid);
 #endif
     }
 }
@@ -99,18 +99,18 @@ void tray_icon::change_icon(int32_t icon_resource_index_)
     auto parent_ = parent.lock();
     if (parent_)
     {
-        NOTIFYICONDATA nid;
-        memset(&nid, 0, sizeof(NOTIFYICONDATA));
-        nid.cbSize = sizeof(NOTIFYICONDATA);
+        NOTIFYICONDATAW nid;
+        memset(&nid, 0, sizeof(NOTIFYICONDATAW));
+        nid.cbSize = sizeof(NOTIFYICONDATAW);
         nid.hWnd = parent_->context().hwnd;
         nid.uID = ID;
         nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
         nid.uCallbackMessage = WM_USER;
         nid.uVersion = NOTIFYICON_VERSION_4;
         nid.hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(icon_resource_index));
-        wcscpy_s(nid.szTip, boost::nowide::widen(tip).c_str());
+        wcscpy_s(nid.szTip, 128, boost::nowide::widen(tip).c_str());
 
-        Shell_NotifyIcon(NIM_MODIFY, &nid);
+        Shell_NotifyIconW(NIM_MODIFY, &nid);
     }
 }
 #endif
@@ -122,18 +122,18 @@ void tray_icon::change_icon(std::string_view icon_file_name_)
     auto parent_ = parent.lock();
     if (parent_)
     {
-        NOTIFYICONDATA nid;
-        memset(&nid, 0, sizeof(NOTIFYICONDATA));
-        nid.cbSize = sizeof(NOTIFYICONDATA);
+        NOTIFYICONDATAW nid;
+        memset(&nid, 0, sizeof(NOTIFYICONDATAW));
+        nid.cbSize = sizeof(NOTIFYICONDATAW);
         nid.hWnd = parent_->context().hwnd;
         nid.uID = ID;
         nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
         nid.uCallbackMessage = WM_USER;
         nid.uVersion = NOTIFYICON_VERSION_4;
-        nid.hIcon = (HICON)LoadImage(NULL, boost::nowide::widen(icon_file_name).c_str(), IMAGE_ICON, 0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE);
-        wcscpy_s(nid.szTip, boost::nowide::widen(tip).c_str());
+        nid.hIcon = (HICON)LoadImageW(NULL, boost::nowide::widen(icon_file_name).c_str(), IMAGE_ICON, 0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE);
+        wcscpy_s(nid.szTip, 128, boost::nowide::widen(tip).c_str());
 
-        Shell_NotifyIcon(NIM_MODIFY, &nid);
+        Shell_NotifyIconW(NIM_MODIFY, &nid);
     }
 #elif __linux__
 #endif
@@ -146,18 +146,18 @@ void tray_icon::change_tip(std::string_view tip_)
     auto parent_ = parent.lock();
     if (parent_)
     {
-        NOTIFYICONDATA nid;
-        memset(&nid, 0, sizeof(NOTIFYICONDATA));
-        nid.cbSize = sizeof(NOTIFYICONDATA);
+        NOTIFYICONDATAW nid;
+        memset(&nid, 0, sizeof(NOTIFYICONDATAW));
+        nid.cbSize = sizeof(NOTIFYICONDATAW);
         nid.hWnd = parent_->context().hwnd;
         nid.uID = ID;
         nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
         nid.uCallbackMessage = WM_USER;
         nid.uVersion = NOTIFYICON_VERSION_4;
         nid.hIcon = GetHIcon();
-        wcscpy_s(nid.szTip, boost::nowide::widen(tip).c_str());
+        wcscpy_s(nid.szTip, 128, boost::nowide::widen(tip).c_str());
 
-        Shell_NotifyIcon(NIM_MODIFY, &nid);
+        Shell_NotifyIconW(NIM_MODIFY, &nid);
     }
 #elif __linux__
 #endif
@@ -169,28 +169,28 @@ void tray_icon::show_message(std::string_view title, std::string_view message)
     auto parent_ = parent.lock();
     if (parent_)
     {
-        NOTIFYICONDATA nid;
-        memset(&nid, 0, sizeof(NOTIFYICONDATA));
-        nid.cbSize = sizeof(NOTIFYICONDATA);
+        NOTIFYICONDATAW nid;
+        memset(&nid, 0, sizeof(NOTIFYICONDATAW));
+        nid.cbSize = sizeof(NOTIFYICONDATAW);
         nid.hWnd = parent_->context().hwnd;
         nid.uID = ID;
         nid.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE | NIF_INFO;
         nid.uCallbackMessage = WM_USER;
         nid.uVersion = NOTIFYICON_VERSION_4;
         nid.hIcon = GetHIcon();
-        wcscpy_s(nid.szTip, boost::nowide::widen(tip).c_str());
+        wcscpy_s(nid.szTip, 128, boost::nowide::widen(tip).c_str());
 
         nid.dwInfoFlags = NIIF_INFO | NIIF_NOSOUND;
         if (!title.empty())
         {
-            wcscpy_s(nid.szInfoTitle, boost::nowide::widen(title).c_str());
+            wcscpy_s(nid.szInfoTitle, 128, boost::nowide::widen(title).c_str());
     }
         if (!message.empty())
         {
-            wcscpy_s(nid.szInfo, boost::nowide::widen(message).c_str());
+            wcscpy_s(nid.szInfo, 128, boost::nowide::widen(message).c_str());
         }
 
-        Shell_NotifyIcon(NIM_MODIFY, &nid);
+        Shell_NotifyIconW(NIM_MODIFY, &nid);
     }
 #elif __linux__
 #endif
@@ -235,7 +235,7 @@ HICON tray_icon::GetHIcon()
     }
     else if (icon_resource_index == -1 && !icon_file_name.empty())
     {
-        return (HICON)LoadImage(NULL, boost::nowide::widen(icon_file_name).c_str(), IMAGE_ICON, 0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE);
+        return (HICON)LoadImageW(NULL, boost::nowide::widen(icon_file_name).c_str(), IMAGE_ICON, 0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE);
     }
 
     return NULL;

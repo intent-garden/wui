@@ -542,8 +542,6 @@ void select::draw_list_item(graphic &gr, int32_t n_item, rect item_rect, list::i
     }
 
     auto item = items_[n_item];
-    
-    auto border_width = theme_dimension(tcn, tv_border_width);
 
     if (state == wui::list::item_state::active)
     {
@@ -569,6 +567,7 @@ void select::draw_list_item(graphic &gr, int32_t n_item, rect item_rect, list::i
 
 void select::activate_list_item(int32_t n_item)
 {
+    (void)n_item; // Unused in this implementation
     list_->hide();
     redraw();
 }

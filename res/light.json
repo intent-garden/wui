@@ -72,6 +72,23 @@
       }
     },
     {
+      "type": "compass_button",
+      "calm": "#e0e0e0",
+      "active": "#90d090",
+      "border": "#06a5df",
+      "border_width": 1,
+      "hover_border": "#235e86",
+      "focused_border": "#140a14",
+      "text": "#181818",
+      "disabled": "#cdcdc8",
+      "round": 2,
+      "focusing": 0,
+      "font": {
+        "name": "Segoe UI",
+        "size": 14
+      }
+    },
+    {
       "type": "input",
       "background": "#fcfcfc",
       "text": "#191914",

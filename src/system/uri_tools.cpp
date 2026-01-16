@@ -27,7 +27,7 @@ namespace wui
 bool open_uri(std::string_view uri)
 {
 #ifdef _WIN32
-    return reinterpret_cast<int64_t>(ShellExecute(NULL, L"open", boost::nowide::widen(uri).c_str(), NULL, NULL, SW_SHOW)) < 32;
+    return reinterpret_cast<int64_t>(ShellExecuteW(NULL, L"open", boost::nowide::widen(uri).c_str(), NULL, NULL, SW_SHOW)) < 32;
 #else
     std::string cmd =
 #ifdef __APPLE__

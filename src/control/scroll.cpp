@@ -32,7 +32,7 @@ scroll::scroll(int32_t area_, int32_t scroll_pos_,
     parent_(),
     showed_(true), enabled_(true), topmost_(false),
     area(area_),
-    scroll_pos(0.0),
+    scroll_pos(static_cast<double>(scroll_pos_)),
     prev_scroll_pos(0.0),
     scroll_interval(1.0),
     orientation_(orientation__),
@@ -527,8 +527,6 @@ void scroll::scroll_down()
         return;
     }
 
-    auto end = orientation_ == orientation::vertical ? position_.height() : position_.width();
-
     if (area > scroll_pos)
     {
         scroll_pos += scroll_interval * 10;
@@ -657,7 +655,7 @@ void scroll::calc_hor_scrollbar_params(rect* bar_rect, rect* up_button_rect, rec
     }
 
     const int32_t SB_WIDTH = full_scrollbar_size,
-        SB_HEIGHT = scrollbar_height, SB_SILDER_MIN_WIDTH = 5,
+        SB_SILDER_MIN_WIDTH = 5,
         SB_BUTTON_WIDTH = SB_WIDTH, SB_BUTTON_HEIGHT = SB_WIDTH;
 
     auto control_pos = get_control_position(position_, parent_);

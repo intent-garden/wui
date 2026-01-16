@@ -783,6 +783,7 @@ void list::redraw_item(int32_t item)
 
 void list::calc_title_height(graphic &gr_)
 {
+    (void)gr_; // Unused in this implementation
     auto font = theme_font(tcn, tv_font, theme_);
     auto text_indent = 5;
 
@@ -803,7 +804,6 @@ void list::draw_titles(graphic &gr_)
     auto font = theme_font(tcn, tv_font, theme_);
     auto text_indent = 5;
 
-    auto border_width = theme_dimension(tcn, tv_border_width, theme_);
     auto title_color = theme_color(tcn, tv_title, theme_);
     auto title_text_color = theme_color(tcn, tv_title_text, theme_);
     

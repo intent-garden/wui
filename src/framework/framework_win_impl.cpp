@@ -36,9 +36,17 @@ void framework_win_impl::run()
     }
     started_ = true;
 
+    // Явно установить нормальный курсор в начале цикла
+    // Это предотвращает показ курсора ожидания при старте приложения
+    SetCursor(LoadCursor(nullptr, IDC_ARROW));
+
     MSG msg;
     while (GetMessage(&msg, nullptr, 0, 0))
     {
+        // Периодически проверять и восстанавливать нормальный курсор
+        // Windows может автоматически менять курсор на ожидание, если приложение долго не обрабатывает сообщения
+        SetCursor(LoadCursor(nullptr, IDC_ARROW));
+        
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }

@@ -83,9 +83,9 @@ void text::draw(graphic &gr, rect)
         break;
     }
 
-    for (auto &line : lines)
+    for (auto &line_text : lines)
     {
-        truncate_line(line, gr, font_, control_pos.width());
+        truncate_line(line_text, gr, font_, control_pos.width());
 
         int32_t left = control_pos.left;
 
@@ -96,19 +96,19 @@ void text::draw(graphic &gr, rect)
             break;
             case hori_alignment::center:
             {
-                auto line_width = measure_text(line, font_, &gr).width();
+                auto line_width = measure_text(line_text, font_, &gr).width();
                 left += ((control_pos.width() - line_width) / 2);
             }
             break;
             case hori_alignment::right:
             {
-                auto line_width = measure_text(line, font_, &gr).width();
+                auto line_width = measure_text(line_text, font_, &gr).width();
                 left += (control_pos.width() - line_width);
             }
             break;
         }
         
-        gr.draw_text({ left, line_top }, line, theme_color(tcn, tv_color, theme_), font_);
+        gr.draw_text({ left, line_top }, line_text, theme_color(tcn, tv_color, theme_), font_);
 
         line_top += static_cast<int32_t>(line_height * space_coeff);
 

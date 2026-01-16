@@ -49,11 +49,13 @@ void clipboard_put(std::string_view text, system_context &context)
 
 bool is_text_in_clipboard(system_context &context)
 {
+    (void)context; // Unused on Windows
     return IsClipboardFormatAvailable(CF_UNICODETEXT);
 }
 
 std::string clipboard_get_text(system_context &context)
 {
+    (void)context; // Unused on Windows
     if (!OpenClipboard(NULL))
     {
         return "";

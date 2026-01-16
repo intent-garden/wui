@@ -113,7 +113,7 @@ const std::vector<uint8_t> &theme_impl::get_image(std::string_view name_)
 void theme_impl::load_resource(int32_t resource_index, std::string_view resource_section)
 {
     auto h_inst = GetModuleHandle(NULL);
-    auto h_resource = FindResource(h_inst, MAKEINTRESOURCE(resource_index), boost::nowide::widen(resource_section).c_str());
+    auto h_resource = FindResourceW(h_inst, (LPCWSTR)MAKEINTRESOURCE(resource_index), boost::nowide::widen(resource_section).c_str());
     if (!h_resource)
     {
         return;

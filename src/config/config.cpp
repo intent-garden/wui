@@ -40,6 +40,7 @@ bool use_registry(std::string_view app_key, HKEY root)
 
 bool create_config(std::string_view file_name, std::string_view app_key, int64_t root)
 {
+    (void)file_name; // Unused on Windows, used on other platforms
 #ifdef _WIN32
     return use_registry(app_key, root == 0 ? HKEY_CURRENT_USER : (HKEY)root);
 #else

@@ -48,7 +48,7 @@ void load_image_from_data(const std::vector<uint8_t> &data, Gdiplus::Image **img
 void load_image_from_resource(WORD image_id, const std::wstring &resource_section, Gdiplus::Image **img)
 {
     HINSTANCE h_inst = GetModuleHandle(NULL);
-    HRSRC h_resource = FindResource(h_inst, MAKEINTRESOURCE(image_id), resource_section.c_str());
+    HRSRC h_resource = FindResourceW(h_inst, (LPCWSTR)MAKEINTRESOURCE(image_id), resource_section.c_str());
     if (!h_resource)
     {
         return;
@@ -71,6 +71,7 @@ void load_image_from_resource(WORD image_id, const std::wstring &resource_sectio
 
 void load_image_from_file(std::string_view file_name, std::string_view images_path, Gdiplus::Image **img, wui::error &err)
 {
+    (void)err; // TODO: check error status
     *img = Gdiplus::Image::FromFile(std::wstring(boost::nowide::widen(images_path) + L"\\" + boost::nowide::widen(file_name)).c_str());
 }
 
@@ -158,7 +159,7 @@ image::image(int32_t resource_index_, std::shared_ptr<i_theme> theme__)
     img(nullptr),
     err{}
 {
-    load_image_from_resource(resource_index, boost::nowide::widen(theme_string(tc, tv_resource, theme_)), &img);
+    load_image_from_resource(static_cast<WORD>(resource_index), boost::nowide::widen(theme_string(tc, tv_resource, theme_)), &img);
 }
 #endif
 
@@ -347,7 +348,7 @@ void image::change_image(int32_t resource_index_)
     resource_index = resource_index_;
 
     free_image(&img);
-    load_image_from_resource(resource_index, boost::nowide::widen(theme_string(tc, tv_resource, theme_)), &img);
+    load_image_from_resource(static_cast<WORD>(resource_index), boost::nowide::widen(theme_string(tc, tv_resource, theme_)), &img);
     
     redraw();
 }

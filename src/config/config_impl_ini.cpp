@@ -96,7 +96,7 @@ void config_impl_ini::delete_value(std::string_view section, std::string_view en
 
 void config_impl_ini::delete_key(std::string_view section)
 {
-    // todo
+    (void)section; // TODO: implement
 }
 
 error config_impl_ini::get_error() const
@@ -108,11 +108,7 @@ bool config_impl_ini::load_values()
 {
     err.reset();
 
-#if __cplusplus >= 202002L || (defined(_MSVC_LANG) && _MSVC_LANG >= 202002L)
-    std::ifstream f(std::filesystem::path(file_name), std::ios::in);
-#else
     std::ifstream f(std::filesystem::u8path(file_name), std::ios::in);
-#endif
     if (!f)
     {
         err.type = error_type::file_not_found;
@@ -194,11 +190,7 @@ bool config_impl_ini::save_values()
 {
     err.reset();
 
-#if __cplusplus >= 202002L || (defined(_MSVC_LANG) && _MSVC_LANG >= 202002L)
-    std::ofstream f(std::filesystem::path(file_name), std::ios::out | std::ios::trunc);
-#else
     std::ofstream f(std::filesystem::u8path(file_name), std::ios::out | std::ios::trunc);
-#endif
     if (!f)
     {
         err.type = error_type::file_not_found;

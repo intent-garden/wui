@@ -14,6 +14,7 @@
 #include <wui/common/rect.hpp>
 #include <wui/common/color.hpp>
 #include <wui/common/orientation.hpp>
+#include <wui/event/event.hpp>
 
 #include <string>
 #include <functional>
@@ -60,6 +61,7 @@ public:
     /// Progress's interface
     void set_range(int32_t from, int32_t to);
     void set_value(int32_t value);
+    void set_click_callback(std::function<void(int32_t)> click_callback);
 
 public:
     /// Control name in theme
@@ -79,6 +81,7 @@ private:
     rect position_;
 
     std::weak_ptr<window> parent_;
+    std::string my_control_sid;
 
     bool showed_, topmost_;
 
@@ -86,7 +89,10 @@ private:
 
     orientation orientation_;
 
+    std::function<void(int32_t)> click_callback;
+
     void redraw();
+    void receive_control_events(const event &ev);
 };
 
 }

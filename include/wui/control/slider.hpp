@@ -74,8 +74,10 @@ public:
     void set_range(int32_t from, int32_t to);
     void set_value(int32_t value);
     int32_t get_value() const;
+    void set_centered_mode(bool centered); // Установить режим с 0 посередине
 
     void set_callback(std::function<void(int32_t)> change_callback);
+    void set_drag_end_callback(std::function<void()> drag_end_callback);
 
 public:
     /// Control name in theme
@@ -92,7 +94,9 @@ public:
 private:
     slider_orientation orientation;
     int32_t from, to, value;
+    bool centered_mode; // Если true, 0 находится посередине (для диапазонов типа -7..+7)
     std::function<void(int32_t)> change_callback;
+    std::function<void()> drag_end_callback;
 
     std::string tcn; /// control name in theme
     std::shared_ptr<i_theme> theme_;

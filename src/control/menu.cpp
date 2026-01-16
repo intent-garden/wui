@@ -177,16 +177,16 @@ void menu::receive_event(const event &ev)
     {
         case event_type::mouse:
         {
-            auto x = ev.mouse_event_.x, y = ev.mouse_event_.y;
+            auto mouse_x = ev.mouse_event_.x, mouse_y = ev.mouse_event_.y;
 
             bool mouse_btn_up = ev.mouse_event_.type == mouse_event_type::left_up ||
                 ev.mouse_event_.type == mouse_event_type::right_up;
 
-            bool outside_list = !list_->position().in({ x, y, x, y });
+            bool outside_list = !list_->position().in({ mouse_x, mouse_y, mouse_x, mouse_y });
 
             bool outside_activation =
                 !activation_control ||
-                !activation_control->position().in({ x, y, x, y });
+                !activation_control->position().in({ mouse_x, mouse_y, mouse_x, mouse_y });
 
             if (mouse_btn_up && outside_list && outside_activation)
             {

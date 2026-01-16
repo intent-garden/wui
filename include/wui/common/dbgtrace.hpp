@@ -14,14 +14,14 @@
 #include <windows.h>   // OutputDebugStringA
 #include <cstdio>      // _snprintf_s / std::snprintf
 
-#ifndef NDEBUG   // активен в Debug-сборке
+#ifndef NDEBUG   // Р°РєС‚РёРІРµРЅ РІ Debug-СЃР±РѕСЂРєРµ
 
-// Максимальная длина одной строки трассировки
+// РњР°РєСЃРёРјР°Р»СЊРЅР°СЏ РґР»РёРЅР° РѕРґРЅРѕР№ СЃС‚СЂРѕРєРё С‚СЂР°СЃСЃРёСЂРѕРІРєРё
 #ifndef DBG_BUFSIZE
 #   define DBG_BUFSIZE 512
 #endif
 
-// Вариадический макрос: TRACE("x=%d", x);
+// Р’Р°СЂРёР°РґРёС‡РµСЃРєРёР№ РјР°РєСЂРѕСЃ: TRACE("x=%d", x);
 #define DBG_TRACE(fmt, ...)                                                           \
         do {                                                                          \
             char _dbgBuf[DBG_BUFSIZE];                                                \
@@ -30,7 +30,7 @@
             OutputDebugStringA(_dbgBuf);                                              \
         } while (0)
 
-#else          // …в Release ничего не генерируем
+#else          // вЂ¦РІ Release РЅРёС‡РµРіРѕ РЅРµ РіРµРЅРµСЂРёСЂСѓРµРј
 
 #define DBG_TRACE(...)    ((void)0)
 
@@ -38,14 +38,14 @@
 
 #else // NO WIN32
 
-#ifndef NDEBUG   // активен в Debug-сборке
+#ifndef NDEBUG   // Р°РєС‚РёРІРµРЅ РІ Debug-СЃР±РѕСЂРєРµ
 
-// Максимальная длина одной строки трассировки
+// РњР°РєСЃРёРјР°Р»СЊРЅР°СЏ РґР»РёРЅР° РѕРґРЅРѕР№ СЃС‚СЂРѕРєРё С‚СЂР°СЃСЃРёСЂРѕРІРєРё
 #ifndef DBG_BUFSIZE
 #   define DBG_BUFSIZE 512
 #endif
 
-// Вариадический макрос: TRACE("x=%d", x);
+// Р’Р°СЂРёР°РґРёС‡РµСЃРєРёР№ РјР°РєСЂРѕСЃ: TRACE("x=%d", x);
 #define DBG_TRACE(fmt, ...)                                                           \
         do {                                                                          \
             char _dbgBuf[DBG_BUFSIZE];                                                \
@@ -54,7 +54,7 @@
             printf(_dbgBuf);                                              \
         } while (0)
 
-#else          // …в Release ничего не генерируем
+#else          // вЂ¦РІ Release РЅРёС‡РµРіРѕ РЅРµ РіРµРЅРµСЂРёСЂСѓРµРј
 
 #define DBG_TRACE(...)    ((void)0)
 

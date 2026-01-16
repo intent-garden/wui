@@ -58,7 +58,7 @@ const std::string &locale_impl::get(std::string_view control, std::string_view v
 void locale_impl::load_resource(int32_t resource_index, std::string_view resource_section)
 {
     auto h_inst = GetModuleHandle(NULL);
-    auto h_resource = FindResource(h_inst, MAKEINTRESOURCE(resource_index), boost::nowide::widen(resource_section).c_str());
+    auto h_resource = FindResourceW(h_inst, (LPCWSTR)MAKEINTRESOURCE(resource_index), boost::nowide::widen(resource_section).c_str());
     if (!h_resource)
     {
         return;

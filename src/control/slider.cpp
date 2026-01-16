@@ -25,7 +25,9 @@ namespace wui
 slider::slider(int32_t from_, int32_t to_, int32_t value_, std::function<void(int32_t)> change_callback_, slider_orientation orientation_, std::string_view theme_control_name, std::shared_ptr<i_theme> theme__)
     : orientation(orientation_),
     from(from_), to(to_), value(value_),
+    centered_mode(from_ < 0 && to_ > 0), // Автоматически определяем centered режим
     change_callback(change_callback_),
+    drag_end_callback(),
     tcn(theme_control_name),
     theme_(theme__),
     position_{ 0 },
@@ -61,11 +63,20 @@ void slider::draw(graphic &gr, rect)
     auto slider_round = theme_dimension(tcn, tv_slider_round, theme_);
 
     double total = (orientation == slider_orientation::horizontal ? control_pos.width() : control_pos.height()) - static_cast<double>(slider_width) / 2;
-    double slider_pos = (total * static_cast<double>(value)) / static_cast<double>(to - from);
-
-    if (slider_pos < static_cast<double>(slider_width) / 2)
+    double slider_pos;
+    
+    if (centered_mode && orientation == slider_orientation::vertical && from < 0 && to > 0)
     {
-        slider_pos = static_cast<double>(slider_width) / 2;
+        // Для centered режима позиция вычисляется отдельно в вертикальном блоке
+        slider_pos = 0; // Временное значение, будет пересчитано ниже
+    }
+    else
+    {
+        slider_pos = (total * static_cast<double>(value - from)) / static_cast<double>(to - from);
+        if (slider_pos < static_cast<double>(slider_width) / 2)
+        {
+            slider_pos = static_cast<double>(slider_width) / 2;
+        }
     }
 
     auto perform_color = theme_color(tcn, tv_perform, theme_);
@@ -92,14 +103,81 @@ void slider::draw(graphic &gr, rect)
     }
     else if (orientation == slider_orientation::vertical)
     {
-        auto center = control_pos.left + (control_pos.width() / 2) - 1;
-        gr.draw_rect({ center - 1, control_pos.bottom, center + 1, control_pos.bottom - static_cast<int32_t>(slider_pos) }, perform_color);
-        gr.draw_rect({ center - 1, control_pos.top, center + 1, control_pos.bottom - static_cast<int32_t>(slider_pos) }, remain_color);
+        auto center_x = control_pos.left + (control_pos.width() / 2) - 1;
+        
+        if (centered_mode && from < 0 && to > 0)
+        {
+            // Режим с 0 посередине: нижняя часть = отрицательные, верхняя = положительные
+            const double total_height = control_pos.height() - static_cast<double>(slider_width);
+            const double center_y = control_pos.top + control_pos.height() / 2.0; // Центр всего контрола
+            
+            double slider_y_pos;
+            if (value < 0)
+            {
+                // Отрицательные значения: от bottom до center
+                const double neg_range = static_cast<double>(0 - from);
+                const double neg_progress = static_cast<double>(value - from) / neg_range;
+                slider_y_pos = control_pos.bottom - (total_height / 2.0) * neg_progress - static_cast<double>(slider_width) / 2.0;
+            }
+            else if (value > 0)
+            {
+                // Положительные значения: от center до top
+                const double pos_range = static_cast<double>(to - 0);
+                const double pos_progress = static_cast<double>(value - 0) / pos_range;
+                slider_y_pos = center_y - (total_height / 2.0) * pos_progress - static_cast<double>(slider_width) / 2.0;
+            }
+            else
+            {
+                // value == 0: точно в центре
+                slider_y_pos = center_y - static_cast<double>(slider_width) / 2.0;
+            }
+            
+            // Ограничить позицию
+            if (slider_y_pos < control_pos.top + static_cast<double>(slider_width) / 2.0)
+            {
+                slider_y_pos = control_pos.top + static_cast<double>(slider_width) / 2.0;
+            }
+            if (slider_y_pos > control_pos.bottom - static_cast<double>(slider_width) / 2.0)
+            {
+                slider_y_pos = control_pos.bottom - static_cast<double>(slider_width) / 2.0;
+            }
+            
+            // Рисовать две части: нижняя (отрицательные) и верхняя (положительные)
+            const int32_t center_y_int = static_cast<int32_t>(center_y);
+            if (value < 0)
+            {
+                // Только нижняя часть активна
+                gr.draw_rect({ center_x - 1, control_pos.bottom, center_x + 1, center_y_int }, perform_color);
+                gr.draw_rect({ center_x - 1, center_y_int, center_x + 1, control_pos.top }, remain_color);
+            }
+            else if (value > 0)
+            {
+                // Только верхняя часть активна
+                gr.draw_rect({ center_x - 1, center_y_int, center_x + 1, control_pos.top }, perform_color);
+                gr.draw_rect({ center_x - 1, control_pos.bottom, center_x + 1, center_y_int }, remain_color);
+            }
+            else
+            {
+                // value == 0: обе части неактивны
+                gr.draw_rect({ center_x - 1, control_pos.bottom, center_x + 1, control_pos.top }, remain_color);
+            }
+            
+            slider_position = { center_x - (slider_height / 2) + 1,
+                    static_cast<int32_t>(slider_y_pos),
+                    center_x + (slider_height / 2) - 1,
+                    static_cast<int32_t>(slider_y_pos) + slider_width };
+        }
+        else
+        {
+            // Обычный режим
+            gr.draw_rect({ center_x - 1, control_pos.bottom, center_x + 1, control_pos.bottom - static_cast<int32_t>(slider_pos) }, perform_color);
+            gr.draw_rect({ center_x - 1, control_pos.top, center_x + 1, control_pos.bottom - static_cast<int32_t>(slider_pos) }, remain_color);
 
-        slider_position = { center - (slider_height / 2) + 1,
-                control_pos.bottom - static_cast<int32_t>(slider_pos) - (slider_width / 2),
-                center + (slider_height / 2) - 1,
-                control_pos.bottom - static_cast<int32_t>(slider_pos) + (slider_width / 2) };
+            slider_position = { center_x - (slider_height / 2) + 1,
+                    control_pos.bottom - static_cast<int32_t>(slider_pos) - (slider_width / 2),
+                    center_x + (slider_height / 2) - 1,
+                    control_pos.bottom - static_cast<int32_t>(slider_pos) + (slider_width / 2) };
+        }
 
         gr.draw_rect(slider_position,
             slider_color,
@@ -151,6 +229,10 @@ void slider::receive_control_events(const event &ev)
             case mouse_event_type::left_up:                
                 active = false;
                 slider_scrolling = false;
+                if (drag_end_callback)
+                {
+                    drag_end_callback();
+                }
             break;
             case mouse_event_type::move:
                 if (slider_scrolling)
@@ -384,6 +466,16 @@ void slider::set_range(int32_t from_, int32_t to_)
 {
     from = from_;
     to = to_;
+    
+    // Автоматически определяем centered режим
+    if (orientation == slider_orientation::vertical && from_ < 0 && to_ > 0)
+    {
+        centered_mode = true;
+    }
+    else
+    {
+        centered_mode = false;
+    }
 
     calc_consts();
 
@@ -404,6 +496,18 @@ int32_t slider::get_value() const
 void slider::set_callback(std::function<void(int32_t)> change_callback_)
 {
     change_callback = change_callback_;
+}
+
+void slider::set_drag_end_callback(std::function<void()> drag_end_callback_)
+{
+    drag_end_callback = drag_end_callback_;
+}
+
+void slider::set_centered_mode(bool centered)
+{
+    centered_mode = centered;
+    calc_consts();
+    redraw();
 }
 
 void slider::redraw(bool clear)
@@ -429,11 +533,62 @@ void slider::move_slider(int32_t x, int32_t y)
 {
     if (orientation == slider_orientation::horizontal)
     {
-        value = static_cast<int32_t>((x - position().left) * diff_size);
+        value = from + static_cast<int32_t>((x - position().left) * diff_size);
     }
     else
     {
-        value = static_cast<int32_t>((position().bottom - y) * diff_size);
+        if (centered_mode && from < 0 && to > 0)
+        {
+            // Режим с 0 посередине - обратное преобразование от draw()
+            // В draw(): value -> y_pos (центр слайдера)
+            // Здесь: y (позиция клика) -> value
+            auto control_pos = position();
+            auto slider_width = theme_dimension(tcn, tv_slider_width, theme_);
+            const double total_height = control_pos.height() - static_cast<double>(slider_width);
+            const double center_y = control_pos.top + control_pos.height() / 2.0; // Центр всего контрола
+            const double half_height = total_height / 2.0;
+            
+            // Доступная область для центра слайдера
+            const double top_limit = control_pos.top + static_cast<double>(slider_width) / 2.0;
+            const double bottom_limit = control_pos.bottom - static_cast<double>(slider_width) / 2.0;
+            
+            // Ограничить y в доступных пределах (y это центр слайдера)
+            double slider_center_y = (std::max)(top_limit, (std::min)(bottom_limit, static_cast<double>(y)));
+            
+            if (slider_center_y >= center_y)
+            {
+                // Нижняя часть: отрицательные значения
+                // В draw(): slider_center_y = bottom - (half_height) * neg_progress - slider_width/2
+                // где neg_progress = (value - from) / (0 - from)
+                // Решаем обратно: slider_center_y - bottom + slider_width/2 = -(half_height) * neg_progress
+                // neg_progress = (bottom - slider_width/2 - slider_center_y) / half_height
+                const double bottom_center = bottom_limit; // bottom - slider_width/2
+                const double neg_progress = (bottom_center - slider_center_y) / half_height;
+                const double neg_range = static_cast<double>(0 - from); // например, 7
+                // neg_progress = (value - from) / neg_range
+                // value = from + neg_range * neg_progress
+                value = static_cast<int32_t>(from + neg_range * (std::max)(0.0, (std::min)(1.0, neg_progress))); // от from (-7) до 0
+            }
+            else
+            {
+                // Верхняя часть: положительные значения
+                // В draw(): slider_center_y = center_y - (half_height) * pos_progress - slider_width/2
+                // где pos_progress = value / to
+                // Решаем обратно: slider_center_y - center_y + slider_width/2 = -(half_height) * pos_progress
+                // pos_progress = (center_y - slider_width/2 - slider_center_y) / half_height
+                const double center_center = center_y - static_cast<double>(slider_width) / 2.0;
+                const double pos_progress = (center_center - slider_center_y) / half_height;
+                const double pos_range = static_cast<double>(to - 0); // например, 7
+                // pos_progress = value / pos_range
+                // value = pos_range * pos_progress
+                value = static_cast<int32_t>(pos_range * (std::max)(0.0, (std::min)(1.0, pos_progress))); // от 0 до to (+7)
+            }
+        }
+        else
+        {
+            // Обычный режим
+            value = from + static_cast<int32_t>((position().bottom - y) * diff_size);
+        }
     }
 
     if (value > to)
@@ -460,7 +615,11 @@ void slider::scroll_up()
         return;
     }
 
-    value += static_cast<int32_t>(round(diff_size));
+    int32_t step = static_cast<int32_t>(round(diff_size));
+    if (step == 0) {
+        step = 1; // Минимум 1 шаг
+    }
+    value += step;
     if (value > to)
     {
         value = to;
@@ -481,7 +640,11 @@ void slider::scroll_down()
         return;
     }
 
-    value -= static_cast<int32_t>(round(diff_size));
+    int32_t step = static_cast<int32_t>(round(diff_size));
+    if (step == 0) {
+        step = 1; // Минимум 1 шаг
+    }
+    value -= step;
     if (value < from)
     {
         value = from;

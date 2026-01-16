@@ -17,8 +17,14 @@
 #include <thread>
 #include <unordered_map>
 
+#ifdef __linux__
+#include <xcb/xcb.h>
+#endif
+
 namespace wui
 {
+
+#ifdef __linux__
 
 struct wnd
 {
@@ -57,5 +63,23 @@ private:
 };
 
 listener& get_listener(); /// Singleton
+
+#else // Windows - stub implementation
+
+class listener
+{
+public:
+    listener() {}
+    ~listener() {}
+    void add_window(void*, std::shared_ptr<window>) {}
+    void delete_window(void*) {}
+    bool init() { return true; }
+    system_context const &context() const { static system_context ctx{}; return ctx; }
+    error const &get_error() const { static error e{}; return e; }
+};
+
+inline listener& get_listener() { static listener instance; return instance; }
+
+#endif
 
 }

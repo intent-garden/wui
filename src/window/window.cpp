@@ -55,6 +55,7 @@
 
 void center_horizontally(wui::rect &pos, wui::system_context &context)
 {
+    (void)context; // Unused on Windows
     RECT work_area;
     SystemParametersInfo(SPI_GETWORKAREA, 0, &work_area, 0);
     auto screen_width = work_area.right - work_area.left;
@@ -64,6 +65,7 @@ void center_horizontally(wui::rect &pos, wui::system_context &context)
 
 void center_vertically(wui::rect &pos, wui::system_context &context)
 {
+    (void)context; // Unused on Windows
     RECT work_area;
     SystemParametersInfo(SPI_GETWORKAREA, 0, &work_area, 0);
     auto screen_height = work_area.bottom - work_area.top;
@@ -318,7 +320,6 @@ std::string window::subscribe(std::function<void(const event&)> receive_callback
             "0123456789"
             "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
             "abcdefghijklmnopqrstuvwxyz";
-        const size_t max_index = (sizeof(charset) - 1);
         return charset[uid(gen)];
     };
 
@@ -1021,7 +1022,7 @@ void window::set_caption(std::string_view caption_)
     if (flag_is_set(window_style_, window_style::title_showed) && !parent_.lock())
     {
 #ifdef _WIN32
-        SetWindowText(context_.hwnd, boost::nowide::widen(caption).c_str());
+        SetWindowTextW(context_.hwnd, boost::nowide::widen(caption).c_str());
 #elif __linux__
         if (context_.connection && context_.wnd)
         {
@@ -1784,10 +1785,12 @@ bool window::init(std::string_view caption_, rect position__, window_style style
         center_vertically(position_, context_);
     }
     
-    context_.hwnd = CreateWindowEx(!topmost() ? 0 : WS_EX_TOPMOST,
+    // Создать окно БЕЗ WS_VISIBLE сначала, чтобы избежать показа курсора ожидания
+    // Окно будет показано позже через ShowWindow
+    context_.hwnd = CreateWindowExW(!topmost() ? 0 : WS_EX_TOPMOST,
         wcex.lpszClassName,
         L"",
-        WS_VISIBLE | WS_MINIMIZEBOX | WS_POPUP | (window_state_ == window_state::minimized ? WS_MINIMIZE : 0),
+        (showed_ ? WS_VISIBLE : 0) | WS_MINIMIZEBOX | WS_POPUP | (window_state_ == window_state::minimized ? WS_MINIMIZE : 0),
         position_.left,
         position_.top,
         position_.width(),
@@ -1807,13 +1810,26 @@ bool window::init(std::string_view caption_, rect position__, window_style style
         expand();
     }
 
-    SetWindowText(context_.hwnd, boost::nowide::widen(caption).c_str());
+    SetWindowTextW(context_.hwnd, boost::nowide::widen(caption).c_str());
 
-    UpdateWindow(context_.hwnd);
+    // Обработать все ожидающие сообщения перед показом окна, чтобы избежать курсора ожидания
+    // Windows может показывать курсор ожидания, если окно видимо, но еще не готово
+    MSG msg;
+    while (PeekMessage(&msg, context_.hwnd, 0, 0, PM_REMOVE))
+    {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
 
     send_internal(internal_event_type::size_changed, position_.width(), position_.height());
 
-    if (!showed_)
+    // Показать окно только если оно должно быть видимо
+    if (showed_)
+    {
+        ShowWindow(context_.hwnd, SW_SHOW);
+        UpdateWindow(context_.hwnd);
+    }
+    else
     {
         ShowWindow(context_.hwnd, SW_HIDE);
     }
@@ -2054,7 +2070,6 @@ void window::ProcessDeviceChanges(window* wnd, WPARAM w, LPARAM l)
     }
 
     system_event_type set = system_event_type::undefined;
-    device_type dev = device_type::undefined;
     switch (w)
     {
         case DBT_DEVICEARRIVAL:

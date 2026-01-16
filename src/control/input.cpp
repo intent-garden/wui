@@ -65,9 +65,9 @@ input::input(std::string_view text__, input_view input_view__, input_content inp
     reset_state();
     
     menu_->set_items({
-            { 0, menu_item_state::normal, locale(tc, cl_cut).data(), "Ctrl+X", nullptr, {}, [this](int32_t i) { buffer_cut(); } },
-            { 1, menu_item_state::normal, locale(tc, cl_copy).data(), "Ctrl+C", nullptr, {}, [this](int32_t i) { buffer_copy(); } },
-            { 2, menu_item_state::normal, locale(tc, cl_paste).data(), "Ctrl+V", nullptr, {}, [this](int32_t i) { buffer_paste(); } }
+            { 0, menu_item_state::normal, locale(tc, cl_cut).data(), "Ctrl+X", nullptr, {}, [this](int32_t) { buffer_cut(); } },
+            { 1, menu_item_state::normal, locale(tc, cl_copy).data(), "Ctrl+C", nullptr, {}, [this](int32_t) { buffer_copy(); } },
+            { 2, menu_item_state::normal, locale(tc, cl_paste).data(), "Ctrl+V", nullptr, {}, [this](int32_t) { buffer_paste(); } }
         });
 }
 
@@ -95,26 +95,8 @@ inline bool cursor_less(size_t row1, size_t col1, size_t row2, size_t col2)
     return row1 < row2 || (row1 == row2 && col1 < col2);
 }
 
-// Auxiliary function: get the number of characters in a UTF-8 string
-static size_t utf8_length(const std::string& s)
-{
-    return utf8::distance(s.begin(), s.end());
-}
-
-// Auxiliary function: get an iterator per character by position (character index)
-static std::string::iterator utf8_iter_at(std::string& s, size_t char_pos)
-{
-    auto it = s.begin();
-    utf8::advance(it, char_pos, s.end());
-    return it;
-}
-
-static std::string::const_iterator utf8_iter_at(const std::string& s, size_t char_pos)
-{
-    auto it = s.begin();
-    utf8::advance(it, char_pos, s.end());
-    return it;
-}
+// Removed unused functions: utf8_length, utf8_iter_at (both overloads)
+// These were causing C4505 warnings about unreferenced functions with internal linkage
 
 // Auxiliary functions for working with byte indexes (as in single-line mode)
 static size_t get_byte_pos_for_char_pos(const std::string& s, size_t char_pos)
@@ -134,37 +116,11 @@ static size_t get_byte_pos_for_char_pos(const std::string& s, size_t char_pos)
     utf8::advance(it, char_pos, s.end());
     return std::distance(s.begin(), it);
 }
-static size_t get_char_pos_for_byte_pos(const std::string& s, size_t byte_pos)
-{
-    if (s.empty()) 
-    { 
-        return 0;
-    }
-    
-    if (byte_pos >= s.size())
-    {
-        return utf8::distance(s.begin(), s.end());
-    }
-    
-    return utf8::distance(s.begin(), s.begin() + byte_pos);
-}
+// Removed unused function: get_char_pos_for_byte_pos
+// This was causing C4505 warning about unreferenced function with internal linkage
 
-// Auxiliary function for checking the validity of UTF-8 in multiline
-static bool check_count_valid(const std::string& line, size_t count)
-{
-    if (count == 0 || line.empty())
-    {
-        return true;
-    }
-
-    if (count > line.size())
-    {
-        return false;
-    }
-
-    auto end_it = utf8::find_invalid(line.begin(), line.begin() + count);
-    return end_it == line.begin() + count;
-}
+// Removed unused function: check_count_valid
+// This was causing C4505 warning about unreferenced function with internal linkage
 
 font input::get_font()
 {
@@ -211,7 +167,6 @@ void input::draw(graphic &gr, rect)
     auto border_width = theme_dimension(tcn, tv_border_width, theme_);
     int line_height = font_.size;
 
-    auto content_width = control_pos.width() - (input_view_ == input_view::multiline ? SCROLL_SIZE : 0);
     auto content_height = control_pos.height() - (input_view_ == input_view::multiline ? SCROLL_SIZE : 0);
 
     bool ok = update_mem_gr();
@@ -325,11 +280,22 @@ std::pair<size_t, size_t> input::calculate_mouse_cursor_position(int x, int y)
     auto font_ = get_font();
     int line_height = font_.size;
 
+    // Protection against division by zero
+    if (line_height <= 0) {
+        line_height = 1; // Fallback to minimum height
+    }
+
     auto control_pos = position();
     auto border_width = theme_dimension(tcn, tv_border_width, theme_);
         
     // We take into account scrolling and borders
     int rel_y = y - control_pos.top + border_width + scroll_offset_y;
+    
+    // Protection against empty lines_
+    if (lines_.empty()) {
+        return {0, 0};
+    }
+    
     size_t row = std::min((size_t)(rel_y / line_height), lines_.size() - 1);
     
     int rel_x = x - control_pos.left + border_width - INPUT_HORIZONTAL_INDENT + scroll_offset_x;
@@ -502,11 +468,11 @@ void input::receive_control_events(const event &ev)
             {
                 bool has_selection = !(select_start_row == select_end_row && select_start_col == select_end_col);
                 menu_->update_item({ 0, has_selection && input_view_ != input_view::readonly && input_view_ != input_view::password ? menu_item_state::normal : menu_item_state::disabled,
-                    locale(tc, cl_cut).data(), "Ctrl+X", nullptr, {}, [this](int32_t i) { buffer_cut(); parent_.lock()->set_focused(shared_from_this()); } });
+                    locale(tc, cl_cut).data(), "Ctrl+X", nullptr, {}, [this](int32_t) { buffer_cut(); parent_.lock()->set_focused(shared_from_this()); } });
                 menu_->update_item({ 1, has_selection && input_view_ != input_view::password ? menu_item_state::normal : menu_item_state::disabled,
-                    locale(tc, cl_copy).data(), "Ctrl+C", nullptr, {}, [this](int32_t i) { buffer_copy(); parent_.lock()->set_focused(shared_from_this()); } });
+                    locale(tc, cl_copy).data(), "Ctrl+C", nullptr, {}, [this](int32_t) { buffer_copy(); parent_.lock()->set_focused(shared_from_this()); } });
                 menu_->update_item({ 2, input_view_ != input_view::readonly ? menu_item_state::normal : menu_item_state::disabled,
-                    locale(tc, cl_paste).data(), "Ctrl+V", nullptr, {}, [this](int32_t i) { buffer_paste(); parent_.lock()->set_focused(shared_from_this()); } });
+                    locale(tc, cl_paste).data(), "Ctrl+V", nullptr, {}, [this](int32_t) { buffer_paste(); parent_.lock()->set_focused(shared_from_this()); } });
 
                 menu_->show_on_control(shared_from_this(), 0, ev.mouse_event_.x, ev.mouse_event_.y);
             }
@@ -798,6 +764,13 @@ void input::receive_control_events(const event &ev)
                     ev.keyboard_event_.key[0] == vk_tab ||
                     static_cast<int32_t>(text().size()) >= symbols_limit)
                 {
+                    return;
+                }
+
+                // Разрешить служебные клавиши (backspace, delete) независимо от input_content
+                if (ev.keyboard_event_.key[0] == vk_back || ev.keyboard_event_.key[0] == vk_del)
+                {
+                    // Эти клавиши обрабатываются в keyboard_event_type::down, пропускаем здесь
                     return;
                 }
 
@@ -1360,12 +1333,12 @@ void input::update_scroll_areas()
     update_scroll_visibility();
 }
 
-void input::on_vert_scroll(scroll_state ss, int32_t v) {
+void input::on_vert_scroll(scroll_state, int32_t v) {
     scroll_offset_y = v;
     redraw();
 }
 
-void input::on_hor_scroll(scroll_state ss, int32_t v) {
+void input::on_hor_scroll(scroll_state, int32_t v) {
     scroll_offset_x = v;
     redraw();
 }
