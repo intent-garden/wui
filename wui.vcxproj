@@ -64,7 +64,7 @@
     <ClInclude Include="include\wui\control\splitter.hpp" />
     <ClInclude Include="include\wui\control\text.hpp" />
     <ClInclude Include="include\wui\control\tooltip.hpp" />
-    <ClInclude Include="include\wui\control\tray_icon.h" />
+    <ClInclude Include="include\wui\control\tray_icon.hpp" />
     <ClInclude Include="include\wui\event\event.hpp" />
     <ClInclude Include="include\wui\event\internal_event.hpp" />
     <ClInclude Include="include\wui\event\keyboard_event.hpp" />

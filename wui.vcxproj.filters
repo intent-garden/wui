@@ -183,9 +183,6 @@
     <ClInclude Include="include\wui\control\panel.hpp">
       <Filter>Header Files\wui\control</Filter>
     </ClInclude>
-    <ClInclude Include="include\wui\control\tray_icon.h">
-      <Filter>Header Files\wui\control</Filter>
-    </ClInclude>
     <ClInclude Include="include\wui\event\system_event.hpp">
       <Filter>Header Files\wui\event</Filter>
     </ClInclude>
@@ -257,6 +254,9 @@
     </ClInclude>
     <ClInclude Include="include\wui\common\dbgtrace.hpp">
       <Filter>Header Files\wui\common</Filter>
+    </ClInclude>
+    <ClInclude Include="include\wui\control\tray_icon.hpp">
+      <Filter>Header Files\wui\control</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

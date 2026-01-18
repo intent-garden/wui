@@ -7,7 +7,7 @@
 // Official repository: https://gitverse.ru/udattsk/wui
 //
 
-#include <wui/control/tray_icon.h>
+#include <wui/control/tray_icon.hpp>
 #include <boost/nowide/convert.hpp>
 
 namespace wui

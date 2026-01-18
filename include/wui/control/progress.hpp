@@ -73,6 +73,8 @@ public:
     static constexpr const char *tv_background = "background";
     static constexpr const char *tv_meter = "meter";
     static constexpr const char* tv_round = "round";
+    static constexpr const char* tv_meter_positive = "meter_positive";
+    static constexpr const char* tv_meter_negative = "meter_negative";
 
 private:
     std::string tcn;

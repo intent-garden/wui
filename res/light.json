@@ -188,7 +188,9 @@
       "border": "#28788c",
       "border_width": 1,
       "background": "#fcfcfc",
-      "meter": "#8dd28a"
+      "meter": "#8dd28a",
+      "meter_positive": "#eb4034",
+      "meter_negative": "#3434eb"
     },
     {
       "type": "slider",

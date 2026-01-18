@@ -50,7 +50,7 @@ progress::~progress()
     }
 }
 
-void progress::draw(graphic &gr, rect)
+void progress::draw(graphic& gr, rect)
 {
     if (!showed_ || position_.is_null())
     {
@@ -59,33 +59,88 @@ void progress::draw(graphic &gr, rect)
 
     auto control_pos = position();
 
-    gr.draw_rect(control_pos,
-        0,
-        theme_color(tcn, tv_background, theme_),
-        0,
-        0);
+    gr.draw_rect(control_pos, theme_color(tcn, tv_background, theme_));
 
-    double total = orientation_ == orientation::horizontal ? control_pos.width() : control_pos.height();
+    // Checking if the mode is two-way
+    bool bidirectional = (from < 0 && to > 0);
 
-    double meter_pos = (total * static_cast<double>(value)) / static_cast<double>(to - from);
-
-    if (orientation_ == orientation::horizontal)
+    if (bidirectional)
     {
-        gr.draw_rect({ control_pos.left,
-                control_pos.top,
-                control_pos.left + static_cast<int32_t>(meter_pos),
-                control_pos.bottom },
-            theme_color(tc, tv_meter, theme_));
+        double half_px = (orientation_ == orientation::horizontal ? control_pos.width() : control_pos.height()) / 2.0;
+
+        rect meter_rect = { 0 };
+        color meter_color = theme_color(tcn, tv_meter, theme_);
+
+        if (value > 0)
+        {
+            meter_color = theme_color(tcn, tv_meter_positive, theme_);
+            // How much is the right/upper half filled (0..to )
+            double ratio = static_cast<double>(value) / static_cast<double>(to);
+            if (ratio > 1.0) ratio = 1.0;
+
+            int32_t offset = static_cast<int32_t>(half_px * ratio);
+
+            if (orientation_ == orientation::horizontal)
+            {
+                int32_t center_x = control_pos.left + static_cast<int32_t>(half_px);
+                meter_rect = { center_x, control_pos.top, center_x + offset, control_pos.bottom };
+            }
+            else
+            {
+                int32_t center_y = control_pos.top + static_cast<int32_t>(half_px);
+                // Up from the center (in screen coordinates, this is a decrease in Y)
+                meter_rect = { control_pos.left, center_y - offset, control_pos.right, center_y };
+            }
+        }
+        else if (value < 0)
+        {
+            meter_color = theme_color(tcn, tv_meter_negative, theme_);
+            // How much is the left/bottom half filled (0..from)
+            double ratio = static_cast<double>(value) / static_cast<double>(from); // from negative, value negative -> ratio positive
+            if (ratio > 1.0) ratio = 1.0;
+
+            int32_t offset = static_cast<int32_t>(half_px * ratio);
+
+            if (orientation_ == orientation::horizontal)
+            {
+                int32_t center_x = control_pos.left + static_cast<int32_t>(half_px);
+                meter_rect = { center_x - offset, control_pos.top, center_x, control_pos.bottom };
+            }
+            else
+            {
+                int32_t center_y = control_pos.top + static_cast<int32_t>(half_px);
+                // Down from the center (in screen coordinates, this is an increase in Y)
+                meter_rect = { control_pos.left, center_y, control_pos.right, center_y + offset };
+            }
+        }
+
+        if (value != 0)
+        {
+            gr.draw_rect(meter_rect, meter_color);
+        }
     }
-    else if (orientation_ == orientation::vertical)
+    else
     {
-        gr.draw_rect({ control_pos.left,
-                control_pos.bottom,
-                control_pos.right,
-                control_pos.bottom - static_cast<int32_t>(meter_pos) },
-            theme_color(tc, tv_meter, theme_));
+        // Normal mode
+        double total_px = orientation_ == orientation::horizontal ? control_pos.width() : control_pos.height();
+        double range = static_cast<double>(to - from);
+        if (range > 0)
+        {
+            double meter_px = (total_px * static_cast<double>(value - from)) / range;
+            if (orientation_ == orientation::horizontal)
+            {
+                gr.draw_rect({ control_pos.left, control_pos.top, control_pos.left + static_cast<int32_t>(meter_px), control_pos.bottom },
+                    theme_color(tcn, tv_meter, theme_));
+            }
+            else
+            {
+                gr.draw_rect({ control_pos.left, control_pos.bottom - static_cast<int32_t>(meter_px), control_pos.right, control_pos.bottom },
+                    theme_color(tcn, tv_meter, theme_));
+            }
+        }
     }
 
+    // Frame
     auto border_width = theme_dimension(tcn, tv_border_width, theme_);
     gr.draw_rect(control_pos,
         theme_color(tcn, tv_border, theme_),
@@ -274,7 +329,7 @@ void progress::redraw()
     }
 }
 
-void progress::receive_control_events(const event &ev)
+void progress::receive_control_events(const event& ev)
 {
     if (!showed_ || !click_callback)
     {
@@ -289,36 +344,51 @@ void progress::receive_control_events(const event &ev)
             return;
         }
 
-        // Вычислить значение на основе позиции клика
         int32_t new_value = value;
-        
+        bool bidirectional = (from < 0 && to > 0);
+
+        // Determining the relative position of the click (from 0.0 to 1.0)
+        double ratio = 0.0;
         if (orientation_ == orientation::horizontal)
         {
-            const int32_t rel_x = ev.mouse_event_.x - control_pos.left;
-            const int32_t width = control_pos.width();
-            if (width > 0)
-            {
-                const double ratio = static_cast<double>(rel_x) / static_cast<double>(width);
-                new_value = static_cast<int32_t>(from + ratio * (to - from));
-            }
+            ratio = static_cast<double>(ev.mouse_event_.x - control_pos.left) / control_pos.width();
         }
-        else // vertical
+        else
         {
-            const int32_t rel_y = ev.mouse_event_.y - control_pos.top;
-            const int32_t height = control_pos.height();
-            if (height > 0)
-            {
-                // Для вертикального: сверху = max (to), снизу = min (from)
-                const double ratio = 1.0 - (static_cast<double>(rel_y) / static_cast<double>(height));
-                new_value = static_cast<int32_t>(from + ratio * (to - from));
-            }
+            // For vertical: 0.0 - bottom (from), 1.0 - top (to)
+            ratio = 1.0 - (static_cast<double>(ev.mouse_event_.y - control_pos.top) / control_pos.height());
         }
 
-        // Ограничить диапазон
+        if (bidirectional)
+        {
+            if (ratio > 0.49 && ratio < 0.51) // The dead zone in the center is for pure zero
+            {
+                new_value = 0;
+            }
+            else if (ratio >= 0.5)
+            {
+                // Правая/верхняя половина: отображаем [0.5, 1.0] в [0, to]
+                double pos_ratio = (ratio - 0.5) * 2.0;
+                new_value = static_cast<int32_t>(pos_ratio * to);
+            }
+            else
+            {
+                // Правая/верхняя половина: отображаем [0.5, 1.0] в [0, to]
+                // With ratio = 0 it should be from, with ratio = 0.5 it should be 0
+                double neg_ratio = ratio * 2.0;
+                new_value = static_cast<int32_t>(from * (1.0 - neg_ratio));
+            }
+        }
+        else
+        {
+            // Normal linear mode
+            new_value = static_cast<int32_t>(from + ratio * (to - from));
+        }
+
+        // We limit the values just in case
         if (new_value < from) new_value = from;
         if (new_value > to) new_value = to;
 
-        // Вызвать callback с новым значением
         click_callback(new_value);
     }
 }

@@ -108,38 +108,56 @@ void slider::draw(graphic &gr, rect)
         if (centered_mode && from < 0 && to > 0)
         {
             // Режим с 0 посередине: нижняя часть = отрицательные, верхняя = положительные
-            const double total_height = control_pos.height() - static_cast<double>(slider_width);
             const double center_y = control_pos.top + control_pos.height() / 2.0; // Центр всего контрола
             
+            // slider_y_pos - это позиция ВЕРХНЕГО края слайдера (top)
             double slider_y_pos;
             if (value < 0)
             {
                 // Отрицательные значения: от bottom до center
+                // При value == from: нижний край слайдера = bottom, верхний = bottom - slider_width
+                // При value == 0: центр слайдера = center_y, верхний = center_y - slider_width/2
                 const double neg_range = static_cast<double>(0 - from);
                 const double neg_progress = static_cast<double>(value - from) / neg_range;
-                slider_y_pos = control_pos.bottom - (total_height / 2.0) * neg_progress - static_cast<double>(slider_width) / 2.0;
+                // Позиция верхнего края: от (bottom - slider_width) до (center_y - slider_width/2)
+                const double bottom_top = control_pos.bottom - slider_width; // Верхний край при value == from
+                const double center_top = center_y - static_cast<double>(slider_width) / 2.0; // Верхний край при value == 0
+                slider_y_pos = bottom_top - (bottom_top - center_top) * neg_progress;
             }
             else if (value > 0)
             {
                 // Положительные значения: от center до top
-                const double pos_range = static_cast<double>(to - 0);
-                const double pos_progress = static_cast<double>(value - 0) / pos_range;
-                slider_y_pos = center_y - (total_height / 2.0) * pos_progress - static_cast<double>(slider_width) / 2.0;
+                // При value == 0: центр слайдера = center_y, верхний = center_y - slider_width/2
+                // При value == to: верхний край слайдера = top (ФИКС)
+                if (value == to)
+                {
+                    // Верхний край слайдера точно на top контрола
+                    slider_y_pos = static_cast<double>(control_pos.top);
+                }
+                else
+                {
+                    const double pos_range = static_cast<double>(to - 0);
+                    const double pos_progress = static_cast<double>(value - 0) / pos_range;
+                    // Позиция верхнего края: от (center_y - slider_width/2) до (top)
+                    const double center_top = center_y - static_cast<double>(slider_width) / 2.0; // Верхний край при value == 0
+                    const double top_limit = static_cast<double>(control_pos.top); // Верхний край при value == to
+                    slider_y_pos = center_top - (center_top - top_limit) * pos_progress;
+                }
             }
             else
             {
-                // value == 0: точно в центре
+                // value == 0: точно в центре, верхний край = center_y - slider_width/2
                 slider_y_pos = center_y - static_cast<double>(slider_width) / 2.0;
             }
             
             // Ограничить позицию
-            if (slider_y_pos < control_pos.top + static_cast<double>(slider_width) / 2.0)
+            if (slider_y_pos < static_cast<double>(control_pos.top))
             {
-                slider_y_pos = control_pos.top + static_cast<double>(slider_width) / 2.0;
+                slider_y_pos = static_cast<double>(control_pos.top);
             }
-            if (slider_y_pos > control_pos.bottom - static_cast<double>(slider_width) / 2.0)
+            if (slider_y_pos + slider_width > static_cast<double>(control_pos.bottom))
             {
-                slider_y_pos = control_pos.bottom - static_cast<double>(slider_width) / 2.0;
+                slider_y_pos = static_cast<double>(control_pos.bottom) - slider_width;
             }
             
             // Рисовать две части: нижняя (отрицательные) и верхняя (положительные)
@@ -563,11 +581,23 @@ void slider::move_slider(int32_t x, int32_t y)
                 // Решаем обратно: slider_center_y - bottom + slider_width/2 = -(half_height) * neg_progress
                 // neg_progress = (bottom - slider_width/2 - slider_center_y) / half_height
                 const double bottom_center = bottom_limit; // bottom - slider_width/2
-                const double neg_progress = (bottom_center - slider_center_y) / half_height;
-                const double neg_range = static_cast<double>(0 - from); // например, 7
-                // neg_progress = (value - from) / neg_range
-                // value = from + neg_range * neg_progress
-                value = static_cast<int32_t>(from + neg_range * (std::max)(0.0, (std::min)(1.0, neg_progress))); // от from (-7) до 0
+                
+                // ФИКС: Если слайдер в самом низу (около bottom_limit), устанавливаем from
+                const double epsilon = 2.0; // Небольшая погрешность в пикселях
+                if (std::abs(slider_center_y - bottom_center) < epsilon)
+                {
+                    value = from; // Минимальное значение (например, -7)
+                }
+                else
+                {
+                    const double neg_progress = (bottom_center - slider_center_y) / half_height;
+                    const double neg_range = static_cast<double>(0 - from); // например, 7
+                    // neg_progress = (value - from) / neg_range
+                    // value = from + neg_range * neg_progress
+                    value = static_cast<int32_t>(from + neg_range * (std::max)(0.0, (std::min)(1.0, neg_progress))); // от from (-7) до 0
+                    // ФИКС: Если получилось 0, но мы близко к центру, оставляем 0
+                    if (value > 0) value = 0;
+                }
             }
             else
             {
@@ -577,11 +607,26 @@ void slider::move_slider(int32_t x, int32_t y)
                 // Решаем обратно: slider_center_y - center_y + slider_width/2 = -(half_height) * pos_progress
                 // pos_progress = (center_y - slider_width/2 - slider_center_y) / half_height
                 const double center_center = center_y - static_cast<double>(slider_width) / 2.0;
-                const double pos_progress = (center_center - slider_center_y) / half_height;
-                const double pos_range = static_cast<double>(to - 0); // например, 7
-                // pos_progress = value / pos_range
-                // value = pos_range * pos_progress
-                value = static_cast<int32_t>(pos_range * (std::max)(0.0, (std::min)(1.0, pos_progress))); // от 0 до to (+7)
+                
+                // ФИКС: Если слайдер в самом верху (около top_limit), устанавливаем to
+                const double epsilon = 2.0; // Небольшая погрешность в пикселях
+                if (std::abs(slider_center_y - top_limit) < epsilon)
+                {
+                    value = to; // Максимальное значение (например, +7)
+                }
+                else
+                {
+                    const double pos_progress = (center_center - slider_center_y) / half_height;
+                    const double pos_range = static_cast<double>(to - 0); // например, 7
+                    // pos_progress = value / pos_range
+                    // value = pos_range * pos_progress
+                    value = static_cast<int32_t>(pos_range * (std::max)(0.0, (std::min)(1.0, pos_progress))); // от 0 до to (+7)
+                    // ФИКС: Если значение близко к to (в пределах погрешности округления), устанавливаем точно to
+                    if (value < to && pos_progress >= 0.95) // Если прогресс >= 95%, считаем что достигли максимума
+                    {
+                        value = to;
+                    }
+                }
             }
         }
         else
