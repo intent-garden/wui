@@ -4,7 +4,7 @@
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
-// Official repository: https://gitverse.ru/udattsk/wui
+//
 //
 
 #pragma once
@@ -14,14 +14,14 @@
 #include <windows.h>   // OutputDebugStringA
 #include <cstdio>      // _snprintf_s / std::snprintf
 
-#ifndef NDEBUG   // активен в Debug-сборке
+#ifndef NDEBUG   // Only in Debug-build
 
-// Максимальная длина одной строки трассировки
+// Buffer size for debug trace
 #ifndef DBG_BUFSIZE
 #   define DBG_BUFSIZE 512
 #endif
 
-// Вариадический макрос: TRACE("x=%d", x);
+// Debug trace macro: TRACE("x=%d", x);
 #define DBG_TRACE(fmt, ...)                                                           \
         do {                                                                          \
             char _dbgBuf[DBG_BUFSIZE];                                                \
@@ -30,7 +30,7 @@
             OutputDebugStringA(_dbgBuf);                                              \
         } while (0)
 
-#else          // …в Release ничего не генерируем
+#else          // In Release build no output
 
 #define DBG_TRACE(...)    ((void)0)
 
@@ -38,23 +38,23 @@
 
 #else // NO WIN32
 
-#ifndef NDEBUG   // активен в Debug-сборке
+#ifndef NDEBUG   // Only in Debug-build
 
-// Максимальная длина одной строки трассировки
+// Buffer size for debug trace
 #ifndef DBG_BUFSIZE
 #   define DBG_BUFSIZE 512
 #endif
 
-// Вариадический макрос: TRACE("x=%d", x);
+// Debug trace macro: TRACE("x=%d", x);
 #define DBG_TRACE(fmt, ...)                                                           \
         do {                                                                          \
             char _dbgBuf[DBG_BUFSIZE];                                                \
-            _snprintf_s(_dbgBuf, sizeof(_dbgBuf), _TRUNCATE,                          \
+            std::snprintf(_dbgBuf, sizeof(_dbgBuf),                                   \
                         "%s(%d): " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__);      \
-            printf(_dbgBuf);                                              \
+            printf(_dbgBuf);                                                          \
         } while (0)
 
-#else          // …в Release ничего не генерируем
+#else          // In Release build no output
 
 #define DBG_TRACE(...)    ((void)0)
 
