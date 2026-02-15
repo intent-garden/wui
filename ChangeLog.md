@@ -1,3 +1,6 @@
+# 1.3.260215
+1. Changed maintainer to Intent Garden. Code cleanup. Input fix. (I-74)
+
 # 1.3.251114
 1. Restore v143 build, because v145 does not work on Windows 7 (TSKW24-9.1)
 

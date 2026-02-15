@@ -1,9 +1,8 @@
 //
-// Copyright (c) 2021-2025 Anton Golovkov (udattsk at gmail dot com)
+// Copyright (c) 2021-2026 Intent Garden Org
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-//
 //
 //
 
@@ -56,13 +55,38 @@ void text::draw(graphic &gr, rect)
 
     auto font_ = theme_font(tcn, tv_font, theme_);
 
-    std::stringstream text__(text_);
-    std::string line;
     std::vector<std::string> lines;
-
-    while (std::getline(text__, line, '\n'))
+    lines.emplace_back();
+    for (std::size_t i = 0; i < text_.size(); ++i)
     {
-        lines.push_back(line);
+        const char c = text_[i];
+        if (c == '\r')
+        {
+            if (i + 1 < text_.size() && text_[i + 1] == '\n')
+            {
+                ++i;
+            }
+            lines.emplace_back();
+            continue;
+        }
+        if (c == '\n')
+        {
+            lines.emplace_back();
+            continue;
+        }
+        lines.back().push_back(c);
+    }
+    if (!text_.empty())
+    {
+        const char last = text_.back();
+        if ((last == '\n' || last == '\r') && !lines.empty())
+        {
+            lines.pop_back();
+        }
+    }
+    if (lines.empty())
+    {
+        lines.emplace_back();
     }
 
     auto line_height = font_.size;

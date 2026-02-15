@@ -1,9 +1,8 @@
-﻿//
-// Copyright (c) 2021-2025 Anton Golovkov (udattsk at gmail dot com)
+//
+// Copyright (c) 2021-2026 Intent Garden Org
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-//
 //
 //
 
@@ -45,6 +44,7 @@
 #include <xcb/xcb_icccm.h>
 
 #include <X11/Xutil.h>
+#include <X11/keysym.h>
 
 #include <wui/system/udev_handler.hpp>
 
@@ -326,12 +326,16 @@ std::string window::subscribe(std::function<void(const event&)> receive_callback
     std::string id(20, 0);
     std::generate_n(id.begin(), 20, randchar);
 
-    subscribers_.emplace_back(event_subscriber{ id, receive_callback_, event_types_, control_ });
+    {
+        std::lock_guard<std::mutex> lock(subscribers_mutex_);
+        subscribers_.emplace_back(event_subscriber{ id, receive_callback_, event_types_, control_ });
+    }
     return id;
 }
 
 void window::unsubscribe(std::string_view subscriber_id)
 {
+    std::lock_guard<std::mutex> lock(subscribers_mutex_);
     auto it = std::find_if(subscribers_.begin(), subscribers_.end(), [&subscriber_id](const event_subscriber &es) {
         return es.id == subscriber_id;
     });
@@ -1206,19 +1210,31 @@ void window::set_root_window(bool yes)
 
 void window::send_event_to_control(const std::shared_ptr<i_control> &control_, const event &ev)
 {
-    auto it = std::find_if(subscribers_.begin(), subscribers_.end(), [control_, ev](const event_subscriber &es) {
-        return flag_is_set(es.event_types, ev.type) && es.control == control_;
-    });
-    
-    if (it != subscribers_.end())
+    std::function<void(const event&)> callback;
     {
-        it->receive_callback(ev);
+        std::lock_guard<std::mutex> lock(subscribers_mutex_);
+        auto it = std::find_if(subscribers_.begin(), subscribers_.end(), [control_, ev](const event_subscriber &es) {
+            return flag_is_set(es.event_types, ev.type) && es.control == control_;
+        });
+        if (it != subscribers_.end())
+        {
+            callback = it->receive_callback;
+        }
+    }
+    if (callback)
+    {
+        callback(ev);
     }
 }
 
 void window::send_event_to_plains(const event &ev)
 {
-    auto subscribers__ = subscribers_; // This is necessary to be able to remove the subscriber in the callback
+    std::vector<event_subscriber> subscribers__;
+    {
+        // This is necessary to be able to remove the subscriber in the callback
+        std::lock_guard<std::mutex> lock(subscribers_mutex_);
+        subscribers__ = subscribers_;
+    }
     for (auto &s : subscribers__)
     {
         if (!s.control && flag_is_set(s.event_types, ev.type) && s.receive_callback)
@@ -1230,7 +1246,12 @@ void window::send_event_to_plains(const event &ev)
 
 void window::send_event_to_plains_and_control(const event& ev, const std::shared_ptr<i_control>& control)
 {
-    auto subscribers__ = subscribers_; // This is necessary to be able to remove the subscriber in the callback
+    std::vector<event_subscriber> subscribers__;
+    {
+        // This is necessary to be able to remove the subscriber in the callback
+        std::lock_guard<std::mutex> lock(subscribers_mutex_);
+        subscribers__ = subscribers_;
+    }
     for (auto& s : subscribers__)
     {
         if (flag_is_set(s.event_types, ev.type) && s.receive_callback)
@@ -1926,6 +1947,8 @@ bool window::init(std::string_view caption_, rect position__, window_style style
 
     xcb_flush(context_.connection);
 
+    send_internal(internal_event_type::window_created, 0, 0);
+
     send_internal(internal_event_type::size_changed, position_.width(), position_.height());
     
     graphic_.init(get_screen_size(context_), theme_color(tcn, tv_background, theme_));
@@ -2619,6 +2642,17 @@ LRESULT CALLBACK window::wnd_proc(HWND hwnd, UINT message, WPARAM w_param, LPARA
             {
                 wnd->execute_focused(); return 0;
             }
+            else if (w_param == VK_OEM_PERIOD || w_param == VK_DECIMAL)
+            {
+                event ev;
+                ev.type = event_type::keyboard;
+                ev.keyboard_event_ = keyboard_event{ keyboard_event_type::key, get_key_modifier(), 0 };
+                ev.keyboard_event_.key[0] = '.';
+                ev.keyboard_event_.key_size = 1;
+
+                wnd->send_event_to_plains_and_control(ev, wnd->get_focused());
+                return 0;
+            }
 
             event ev;
             ev.type = event_type::keyboard;
@@ -2648,7 +2682,12 @@ LRESULT CALLBACK window::wnd_proc(HWND hwnd, UINT message, WPARAM w_param, LPARA
                 event ev;
                 ev.type = event_type::keyboard;
                 ev.keyboard_event_ = keyboard_event{ keyboard_event_type::key, get_key_modifier(), 0 };
-                auto narrow_str = boost::nowide::narrow(reinterpret_cast<const wchar_t*>(&w_param));
+                const wchar_t wc = static_cast<wchar_t>(w_param);
+                std::wstring wstr(1, wc);
+                auto narrow_str = boost::nowide::narrow(wstr);
+                if (narrow_str.empty() && (wc == L'.' || wc == L',')) {
+                    narrow_str = ".";
+                }
                 memcpy(ev.keyboard_event_.key, narrow_str.c_str(), narrow_str.size());
                 ev.keyboard_event_.key_size = static_cast<uint8_t>(narrow_str.size());
 
@@ -3066,6 +3105,13 @@ void window::process_events(xcb_generic_event_t &e)
                 keyev.state = ev_.state;
 
                 ev.keyboard_event_.key_size = static_cast<uint8_t>(XLookupString(&keyev, ev.keyboard_event_.key, sizeof(ev.keyboard_event_.key), nullptr, nullptr));
+                if (ev.keyboard_event_.key_size == 0) {
+                    const KeySym sym = XLookupKeysym(&keyev, 0);
+                    if (sym == XK_period || sym == XK_KP_Decimal) {
+                        ev.keyboard_event_.key[0] = '.';
+                        ev.keyboard_event_.key_size = 1;
+                    }
+                }
                 
                 send_event_to_plains_and_control(ev, get_focused());
             }

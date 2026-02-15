@@ -63,6 +63,6 @@ Email: info@libwui.org
 ![WUI screen 1](https://libwui.org/main/img/screenshoot-1.png)
 ![WUI screen 2](https://libwui.org/main/img/screenshoot-2.png)
 
-## Donate ❤️
+## Maintainer
 
-Если есть возможность и желание: https://libwui.org/donate_ru/
+Организация "Сад намерений"

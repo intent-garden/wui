@@ -1,9 +1,8 @@
-﻿//
-// Copyright (c) 2023 Anton Golovkov (udattsk at gmail dot com)
+//
+// Copyright (c) 2021-2026 Intent Garden Org
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-//
 //
 //
 
@@ -108,9 +107,16 @@ bool config_impl_ini::load_values()
 {
     err.reset();
 
-    std::ifstream f(std::filesystem::u8path(file_name), std::ios::in);
+    const auto file_path = std::filesystem::u8path(file_name);
+    std::ifstream f(file_path, std::ios::in);
     if (!f)
     {
+        if (!std::filesystem::exists(file_path))
+        {
+            // Нет конфигурации - считаем это нормальным, создастся при сохранении
+            return true;
+        }
+
         err.type = error_type::file_not_found;
         err.component = "config_impl_ini::load_values()";
         err.message = "Error opening config file: " + file_name;

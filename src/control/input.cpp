@@ -1,9 +1,8 @@
 //
-// Copyright (c) 2021-2025 Anton Golovkov (udattsk at gmail dot com)
+// Copyright (c) 2021-2026 Intent Garden Org
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-//
 //
 //
 
@@ -20,6 +19,8 @@
 #include <wui/locale/locale.hpp>
 
 #include <wui/common/flag_helpers.hpp>
+
+#include <wui/common/dbgtrace.hpp>
 
 #include <boost/nowide/convert.hpp>
 #include <utf8/utf8.h>
@@ -95,9 +96,6 @@ inline bool cursor_less(size_t row1, size_t col1, size_t row2, size_t col2)
     return row1 < row2 || (row1 == row2 && col1 < col2);
 }
 
-// Removed unused functions: utf8_length, utf8_iter_at (both overloads)
-// These were causing C4505 warnings about unreferenced functions with internal linkage
-
 // Auxiliary functions for working with byte indexes (as in single-line mode)
 static size_t get_byte_pos_for_char_pos(const std::string& s, size_t char_pos)
 {
@@ -116,11 +114,6 @@ static size_t get_byte_pos_for_char_pos(const std::string& s, size_t char_pos)
     utf8::advance(it, char_pos, s.end());
     return std::distance(s.begin(), it);
 }
-// Removed unused function: get_char_pos_for_byte_pos
-// This was causing C4505 warning about unreferenced function with internal linkage
-
-// Removed unused function: check_count_valid
-// This was causing C4505 warning about unreferenced function with internal linkage
 
 font input::get_font()
 {
@@ -373,18 +366,6 @@ void input::receive_control_events(const event &ev)
         if (hor_scroll->position().in(ev.mouse_event_.x, ev.mouse_event_.y)) {
             hor_scroll->receive_control_events(ev);
             return;
-        }
-        if (ev.type == event_type::mouse && ev.mouse_event_.type == mouse_event_type::left_down) {
-            auto [row, col] = calculate_mouse_cursor_position(ev.mouse_event_.x, ev.mouse_event_.y);
-            cursor_row = row;
-            cursor_col = col;
-            selecting = true;
-            select_start_row = cursor_row;
-            select_start_col = cursor_col;
-            select_end_row = cursor_row;
-            select_end_col = cursor_col;
-            redraw();
-            scroll_to_cursor();
         }
     }
 
@@ -762,7 +743,7 @@ void input::receive_control_events(const event &ev)
 
                 if (input_view_ == input_view::readonly ||
                     ev.keyboard_event_.key[0] == vk_tab ||
-                    static_cast<int32_t>(text().size()) >= symbols_limit)
+                    (symbols_limit != -1 && static_cast<int32_t>(text().size()) >= symbols_limit))
                 {
                     return;
                 }
@@ -792,7 +773,7 @@ void input::receive_control_events(const event &ev)
                     if (change_callback) change_callback();
                 }
                 
-                if (text().size() < (size_t)symbols_limit)
+                if (symbols_limit != -1 && text().size() < (size_t)symbols_limit)
                 {
                     if (ev.keyboard_event_.key[0] == 13 || ev.keyboard_event_.key[0] == 10)
                     {
@@ -853,7 +834,7 @@ void input::set_position(rect position__)
         vert_scroll->set_position({ position_.right - 14 - border_width,
             position_.top + border_width,
             position_.right - border_width,
-            position_.bottom - border_width });
+            position_.bottom - border_width - 3 });
         hor_scroll->set_position({ position_.left + border_width,
             position_.bottom - 14 - border_width,
             position_.right - border_width,
@@ -1256,7 +1237,7 @@ void input::buffer_paste() {
     for (const auto& l : lines_) total_chars += utf8::distance(l.begin(), l.end());
     for (const auto& l : paste_lines) total_chars += utf8::distance(l.begin(), l.end());
     
-    if (total_chars > (size_t)symbols_limit) {
+    if (symbols_limit != -1 && total_chars > (size_t)symbols_limit) {
         return; // We do not insert it if the limit is exceeded.
     }
 
@@ -1298,49 +1279,38 @@ void input::update_scroll_areas()
     auto border_width = theme_dimension(tcn, tv_border_width, theme_);
     auto font_ = get_font();
     int line_height = font_.size;
-    
-    // Creating a graphical context for measuring text
-    
-    // 1. We calculate the maximum line width (using cache)
+        
+    // Calculate the maximum line width (using cache)
     int max_width = get_max_line_width();
 
-    // 2. We calculate the size of the text area
+    // Calculate the size of the text area
     int content_width = control_pos.width() - border_width * 2 - (input_view_ == input_view::multiline ? SCROLL_SIZE : 0);
     int content_height = control_pos.height() - border_width * 2 - (input_view_ == input_view::multiline ? SCROLL_SIZE : 0);
 
-    // 3. First we count the vertical scrollbar
+    // Count the vertical scrollbar
     int total_height = static_cast<int>(lines_.size()) * line_height;
-    int vert_area = std::max(0, total_height - content_height - 4);
+    int vert_area = std::max(0, total_height - content_height);
     vert_scroll->set_area(vert_area);
     
-    // 4. Now we are counting the horizontal scrollbar
-    int hor_area = std::max(0, max_width - content_width - 4);
+    // Count the horizontal scrollbar
+    int hor_area = std::max(0, max_width - content_width);
     hor_scroll->set_area(hor_area);
-    bool need_hor_scroll = max_width > content_width;
-
-    if (input_view_ != input_view::multiline)
-    {
-        need_hor_scroll = false;
-        vert_scroll->set_area(0);
-    }
-    
-    // 5. If you need a vertical scroll after the horizontal scroll appears, we recalculate it.
-    if (need_hor_scroll) {
-        vert_area = std::max(0, total_height - content_height);
-        vert_scroll->set_area(vert_area);
-    }
-
+        
     update_scroll_visibility();
 }
 
-void input::on_vert_scroll(scroll_state, int32_t v) {
-    scroll_offset_y = v;
-    redraw();
+void input::on_vert_scroll(scroll_state ss, int32_t v) {
+    if (ss == scroll_state::up_end || ss == scroll_state::down_end || ss == scroll_state::moving) {
+        scroll_offset_y = v;
+        redraw();
+    }
 }
 
-void input::on_hor_scroll(scroll_state, int32_t v) {
-    scroll_offset_x = v;
-    redraw();
+void input::on_hor_scroll(scroll_state ss, int32_t v) {
+    if (ss == scroll_state::up_end || ss == scroll_state::down_end || ss == scroll_state::moving) {
+        scroll_offset_x = v;
+        redraw();
+    }
 }
 
 void input::update_scroll_visibility() {
@@ -1414,7 +1384,7 @@ void input::start_auto_scroll(bool up)
 {
     if (auto_scroll_timer_ && auto_scroll_type_ == auto_scroll_type::idle) {
         auto_scroll_type_ = up ? auto_scroll_type::up : auto_scroll_type::down;
-        auto_scroll_timer_->start(40); // 40ms interval (25 lines per sec)
+        auto_scroll_timer_->start(80); // 80ms interval (12.5 lines per sec)
     }
 }
 
@@ -1422,7 +1392,7 @@ void input::start_auto_hscroll(bool left)
 {
     if (auto_scroll_timer_ && auto_scroll_type_ == auto_scroll_type::idle) {
         auto_scroll_type_ = left ? auto_scroll_type::left : auto_scroll_type::right;
-        auto_scroll_timer_->start(40); // 40ms interval (25 symbols per sec)
+        auto_scroll_timer_->start(80); // 80ms interval (12.5 symbols per sec)
     }
 }
 
@@ -1453,7 +1423,7 @@ void input::on_auto_scroll()
                 redraw();
             }
             else {
-                // Если уже на первой строке, двигаем курсор в начало строки
+                // If it is already on the first line, move the cursor to the beginning of the line
                 cursor_col = 0;
                 select_end_row = cursor_row;
                 select_end_col = cursor_col;
@@ -1472,7 +1442,7 @@ void input::on_auto_scroll()
                 redraw();
             }
             else {
-                // Если уже на последней строке, двигаем курсор в конец строки
+                // If it is already on the last line, move the cursor to the end of the line
                 cursor_col = utf8::distance(lines_[cursor_row].begin(), lines_[cursor_row].end());
                 select_end_row = cursor_row;
                 select_end_col = cursor_col;
@@ -1484,14 +1454,12 @@ void input::on_auto_scroll()
         case auto_scroll_type::left:
             if (cursor_col > 0) {
                 --cursor_col;
-                //cursor_col = std::min(cursor_col, static_cast<size_t>(utf8::distance(lines_[cursor_row].begin(), lines_[cursor_row].end())));
-                //select_end_row = cursor_row;
                 select_end_col = cursor_col;
                 scroll_to_cursor();
                 redraw();
             }
             else {
-                // Если уже на первой позиции, переводим курсор вверх
+                // If you are already in the first position, move the cursor up
                 if (cursor_row > 0)
                 {
                     --cursor_row;
@@ -1507,14 +1475,12 @@ void input::on_auto_scroll()
         case auto_scroll_type::right:
             if (cursor_col < lines_[cursor_row].size()) {
                 ++cursor_col;
-                //cursor_col = std::min(cursor_col, static_cast<size_t>(utf8::distance(lines_[cursor_row].begin(), lines_[cursor_row].end())));
-                //select_end_row = cursor_row;
                 select_end_col = cursor_col;
                 scroll_to_cursor();
                 redraw();
             }
             else {
-                // Если уже на последней позиции, переводим курсор вниз
+                // If you are already in the last position, move the cursor down
                 if (cursor_row < lines_.size())
                 {
                     ++cursor_row;
@@ -1612,6 +1578,19 @@ void input::scroll_to_cursor()
             vert_scroll->set_scroll_pos(new_scroll);
         }
     }
+}
+
+void input::scroll_to_end()
+{
+    if (lines_.empty() || input_view_ != input_view::multiline)
+    {
+        return;
+    }
+
+    auto font_ = get_font();
+    int32_t line_height = font_.size;
+
+    vert_scroll->set_scroll_pos(line_height * static_cast<int32_t>(lines_.size()));
 }
 
 }
