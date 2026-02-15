@@ -1,9 +1,8 @@
 //
-// Copyright (c) 2021-2025 Anton Golovkov (udattsk at gmail dot com)
+// Copyright (c) 2021-2026 Intent Garden Org
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-//
 //
 //
 
@@ -61,7 +60,8 @@ public:
     /// Progress's interface
     void set_range(int32_t from, int32_t to);
     void set_value(int32_t value);
-    void set_click_callback(std::function<void(int32_t)> click_callback);
+    void set_click_callback(std::function<void(int32_t, bool)> click_callback);
+    void set_point(int32_t value, bool is_max);
 
 public:
     /// Control name in theme
@@ -91,7 +91,11 @@ private:
 
     orientation orientation_;
 
-    std::function<void(int32_t)> click_callback;
+    std::function<void(int32_t, bool)> click_callback;
+    bool has_min_point{ false };
+    bool has_max_point{ false };
+    int32_t min_point{ 0 };
+    int32_t max_point{ 0 };
 
     void redraw();
     void receive_control_events(const event &ev);

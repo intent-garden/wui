@@ -1,9 +1,8 @@
 //
-// Copyright (c) 2021-2025 Anton Golovkov (udattsk at gmail dot com)
+// Copyright (c) 2021-2026 Intent Garden Org
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-//
 //
 //
 
@@ -17,10 +16,10 @@ namespace about
 
 static constexpr const char * name = "libWUI";
 static constexpr const char * full_name = "Window User Interface Library";
-static constexpr const char * version = "1.3.260122";
+static constexpr const char * version = "1.3.260215";
 static constexpr const char * web = "https://libwui.org";
-static constexpr const char * authors = "Anton Golovkov";
-static constexpr const char * official_repo = "https://github.com/ud84/wui";
+static constexpr const char * authors = "Intent Garden Org";
+static constexpr const char * official_repo = "https://github.com/intent-garden/wui";
 static constexpr const char * licence = "Boost Software License, Version 1.0";
 
 }

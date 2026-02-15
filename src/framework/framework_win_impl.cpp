@@ -1,9 +1,8 @@
 //
-// Copyright (c) 2023 Anton Golovkov (udattsk at gmail dot com)
+// Copyright (c) 2021-2026 Intent Garden Org
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-//
 //
 //
 
@@ -36,17 +35,9 @@ void framework_win_impl::run()
     }
     started_ = true;
 
-    // Явно установить нормальный курсор в начале цикла
-    // Это предотвращает показ курсора ожидания при старте приложения
-    SetCursor(LoadCursor(nullptr, IDC_ARROW));
-
     MSG msg;
     while (GetMessage(&msg, nullptr, 0, 0))
     {
-        // Периодически проверять и восстанавливать нормальный курсор
-        // Windows может автоматически менять курсор на ожидание, если приложение долго не обрабатывает сообщения
-        SetCursor(LoadCursor(nullptr, IDC_ARROW));
-        
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }

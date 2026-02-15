@@ -1,9 +1,8 @@
 //
-// Copyright (c) 2021-2025 Anton Golovkov (udattsk at gmail dot com)
+// Copyright (c) 2021-2026 Intent Garden Org
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-//
 //
 //
 
@@ -38,7 +37,8 @@ enum class input_content
 {
     text,
     integer,
-    numeric
+    numeric,
+    hostport
 };
 
 class input : public i_control, public std::enable_shared_from_this<input>
@@ -93,6 +93,7 @@ public:
     void set_return_callback(std::function<void()> return_callback);
 
     const std::vector<std::string>& get_lines() const;
+    void scroll_to_end();
 
 public:
     /// Control name in theme

@@ -59,7 +59,6 @@ Email: info@libwui.org
 
 [PVS-Studio](https://pvs-studio.com/pvs-studio/?utm_source=website&utm_medium=github&utm_campaign=open_source) - static analyzer for C, C++, C#, and Java code.
 
-## Donate ❤️
+## Maintainer
 
-In order for me to implement macOS support I need a macbook, which I don't have.
-If you want to donate: https://libwui.org/donate
+Intent Garden Org

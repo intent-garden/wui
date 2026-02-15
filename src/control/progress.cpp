@@ -1,9 +1,8 @@
 //
-// Copyright (c) 2021-2025 Anton Golovkov (udattsk at gmail dot com)
+// Copyright (c) 2021-2026 Intent Garden Org
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-//
 //
 //
 
@@ -37,7 +36,11 @@ progress::progress(int32_t from_, int32_t to_, int32_t value_, orientation orien
     to(to_),
     value(value_),
     orientation_(orientation__),
-    click_callback()
+    click_callback(),
+    has_min_point(false),
+    has_max_point(false),
+    min_point(0),
+    max_point(0)
 {
 }
 
@@ -139,6 +142,29 @@ void progress::draw(graphic& gr, rect)
             }
         }
     }
+
+    // Setpoints
+    auto draw_point = [&](int32_t point_value, const color& point_color) {
+        double range = static_cast<double>(to - from);
+        if (range <= 0) return;
+        double ratio = static_cast<double>(point_value - from) / range;
+        if (ratio < 0.0) ratio = 0.0;
+        if (ratio > 1.0) ratio = 1.0;
+        if (orientation_ == orientation::horizontal)
+        {
+            const int32_t x = control_pos.left + static_cast<int32_t>(ratio * control_pos.width());
+            rect line_rect{ x, control_pos.top, x + 1, control_pos.bottom };
+            gr.draw_rect(line_rect, point_color);
+        }
+        else
+        {
+            const int32_t y = control_pos.bottom - static_cast<int32_t>(ratio * control_pos.height());
+            rect line_rect{ control_pos.left, y, control_pos.right, y + 1 };
+            gr.draw_rect(line_rect, point_color);
+        }
+    };
+    if (has_min_point) draw_point(min_point, make_color(255, 255, 255));
+    if (has_max_point) draw_point(max_point, make_color(0, 255, 0));
 
     // Frame
     auto border_width = theme_dimension(tcn, tv_border_width, theme_);
@@ -290,7 +316,7 @@ void progress::set_value(int32_t value_)
     redraw();
 }
 
-void progress::set_click_callback(std::function<void(int32_t)> click_callback_)
+void progress::set_click_callback(std::function<void(int32_t, bool)> click_callback_)
 {
     click_callback = click_callback_;
     
@@ -315,6 +341,21 @@ void progress::set_click_callback(std::function<void(int32_t)> click_callback_)
     }
 }
 
+void progress::set_point(int32_t value_, bool is_max)
+{
+    if (is_max)
+    {
+        max_point = value_;
+        has_max_point = true;
+    }
+    else
+    {
+        min_point = value_;
+        has_min_point = true;
+    }
+    redraw();
+}
+
 void progress::redraw()
 {
     if (showed_)
@@ -336,8 +377,10 @@ void progress::receive_control_events(const event& ev)
         return;
     }
 
-    if (ev.type == event_type::mouse && ev.mouse_event_.type == mouse_event_type::left_down)
+    if (ev.type == event_type::mouse &&
+        (ev.mouse_event_.type == mouse_event_type::left_down || ev.mouse_event_.type == mouse_event_type::right_down))
     {
+        const bool is_right = (ev.mouse_event_.type == mouse_event_type::right_down);
         auto control_pos = position();
         if (!control_pos.in(ev.mouse_event_.x, ev.mouse_event_.y))
         {
@@ -389,7 +432,7 @@ void progress::receive_control_events(const event& ev)
         if (new_value < from) new_value = from;
         if (new_value > to) new_value = to;
 
-        click_callback(new_value);
+        click_callback(new_value, is_right);
     }
 }
 
