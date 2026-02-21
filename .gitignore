@@ -51,3 +51,4 @@ examples/hello_world/hello_world
 /wui/Debug
 /wui/Release
 /wui/x64/Debug
+/out/build/x64-Debug
