@@ -14,6 +14,8 @@
 #include <wui/system/system_context.hpp>
 #include <wui/common/error.hpp>
 
+#include <chrono>
+#include <functional>
 #include <thread>
 #include <unordered_map>
 
@@ -47,6 +49,15 @@ public:
 
     error const &get_error() const;
 
+    /// Registers a periodic callback invoked on the window event thread
+    /// (listener thread) every `interval`. One timer per process; a new
+    /// interval/callback replaces the previous one.
+    void set_timer(std::chrono::milliseconds interval,
+                   std::function<void()> callback);
+    /// Removes the periodic callback.
+    void clear_timer();
+    bool timer_enabled() const { return timer_enabled_; }
+
 private:
     bool started;
     std::thread thread;
@@ -60,6 +71,13 @@ private:
     void stop();
     
     void process_events();
+
+ private:
+    void dispatch_due_timer();
+    bool timer_enabled_{false};
+    std::chrono::milliseconds timer_interval_{std::chrono::milliseconds(16)};
+    std::chrono::steady_clock::time_point next_tick_{};
+    std::function<void()> on_tick_;
 };
 
 listener& get_listener(); /// Singleton
@@ -76,6 +94,9 @@ public:
     bool init() { return true; }
     system_context const &context() const { static system_context ctx{}; return ctx; }
     error const &get_error() const { static error e{}; return e; }
+    void set_timer(std::chrono::milliseconds, std::function<void()>) {}
+    void clear_timer() {}
+    bool timer_enabled() const { return false; }
 };
 
 inline listener& get_listener() { static listener instance; return instance; }

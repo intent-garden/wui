@@ -9,6 +9,11 @@
 
 #include <wui/window/listener.h>
 
+#include <algorithm>
+#include <chrono>
+#include <functional>
+#include <poll.h>
+
 
 namespace wui
 {
@@ -98,48 +103,101 @@ system_context const &listener::context() const
 
 void listener::process_events()
 {
-    xcb_generic_event_t *e = nullptr;
+    const int fd = xcb_get_file_descriptor(context_.connection);
     xcb_flush(context_.connection);
-    while (started && (e = xcb_wait_for_event(context_.connection)))
+    while (started)
     {
-        xcb_window_t w = e->pad[2];
+        const auto now = std::chrono::steady_clock::now();
 
-        switch (e->response_type & ~0x80)
+        // Poll the X connection so the loop stays responsive to both X
+        // events and the periodic timer callback (same listener thread).
+        int timeout_ms = 100;
+        if (timer_enabled_)
         {
-            case XCB_EXPOSE:
-            {
-                auto ev = (xcb_expose_event_t*)e;
-                w = ev->window;
-            }
-            break;
-            case XCB_CONFIGURE_NOTIFY:
-            case XCB_PROPERTY_NOTIFY:
-            case XCB_CLIENT_MESSAGE:
-            {
-                auto ev = (xcb_configure_notify_event_t*)&e;
-                w = e->pad[0];
-            }
-            break;
-            default: break;
+            const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
+                next_tick_ - now).count();
+            timeout_ms = static_cast<int>(std::clamp<long long>(remaining, 1, 100));
         }
 
-        auto wnd = windows.find(w);
-        if (wnd != windows.end())
+        struct pollfd pfd {};
+        pfd.fd = fd;
+        pfd.events = POLLIN;
+        const int rc = poll(&pfd, 1, timeout_ms);
+
+        if (rc > 0 && (pfd.revents & POLLIN))
         {
-            auto &w = wnd->second;
-            if (!w.created)
+            xcb_generic_event_t *e = nullptr;
+            while ((e = xcb_poll_for_event(context_.connection)))
             {
-                w.created = true;
-                event ev;
-                ev.type = wui::event_type::internal;
-                ev.internal_event_.type = wui::internal_event_type::window_created;
-                w.window_->receive_control_events(ev);
+                xcb_window_t w = e->pad[2];
+
+                switch (e->response_type & ~0x80)
+                {
+                    case XCB_EXPOSE:
+                    {
+                        auto ev = (xcb_expose_event_t*)e;
+                        w = ev->window;
+                    }
+                    break;
+                    case XCB_CONFIGURE_NOTIFY:
+                    case XCB_PROPERTY_NOTIFY:
+                    case XCB_CLIENT_MESSAGE:
+                    {
+                        auto ev = (xcb_configure_notify_event_t*)&e;
+                        w = e->pad[0];
+                    }
+                    break;
+                    default: break;
+                }
+
+                auto wnd = windows.find(w);
+                if (wnd != windows.end())
+                {
+                    auto &w = wnd->second;
+                    if (!w.created)
+                    {
+                        w.created = true;
+                        event ev;
+                        ev.type = wui::event_type::internal;
+                        ev.internal_event_.type = wui::internal_event_type::window_created;
+                        w.window_->receive_control_events(ev);
+                    }
+                    w.window_->process_events(*e);
+                }
+
+                free(e);
             }
-            w.window_->process_events(*e);
         }
 
-        free(e);
+        dispatch_due_timer();
     }
+}
+
+void listener::set_timer(std::chrono::milliseconds interval,
+                         std::function<void()> callback)
+{
+    timer_interval_ = interval > std::chrono::milliseconds(0)
+        ? interval : std::chrono::milliseconds(16);
+    on_tick_ = std::move(callback);
+    next_tick_ = std::chrono::steady_clock::now() + timer_interval_;
+    timer_enabled_ = static_cast<bool>(on_tick_);
+}
+
+void listener::clear_timer()
+{
+    timer_enabled_ = false;
+    on_tick_ = {};
+}
+
+void listener::dispatch_due_timer()
+{
+    if (!timer_enabled_ || !on_tick_) return;
+    const auto now = std::chrono::steady_clock::now();
+    if (now < next_tick_) return;
+    auto callback = on_tick_;
+    callback();
+    const auto next = next_tick_ + timer_interval_;
+    next_tick_ = (next > now) ? next : now + timer_interval_;
 }
 
 error const &listener::get_error() const
