@@ -63,6 +63,13 @@ public:
     timer_id schedule_timer(std::chrono::milliseconds interval,
                             std::function<void()> callback);
     /// Cancels a timer. Returns false when the id is not registered.
+    ///
+    /// Cancellation is asynchronous with respect to a callback that is already
+    /// running: clear_timer() does not wait for it to finish, so objects
+    /// captured by a running callback (raw pointers/references) must not be
+    /// considered safe to release just because the timer was cancelled. Use
+    /// shared ownership or an explicit lifetime token when the callback may
+    /// outlive the cancellation point.
     bool clear_timer(timer_id id);
     /// Number of active timers (for tests/introspection).
     size_t timer_count() const;
