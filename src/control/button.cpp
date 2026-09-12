@@ -336,7 +336,7 @@ void button::draw_indicator(graphic &gr, rect bounds)
     // Contrast the mark with its track, including custom themes and disabled state.
     const auto brightness = ((fill >> 16) & 255) + ((fill >> 8) & 255) + (fill & 255);
     const auto mark = turned_ ? (brightness > 382 ? make_color(24, 30, 27) : make_color(255, 255, 255)) : outline;
-    const int round = button_view_ == button_view::checkbox ? (std::max)(2, size / 6) : size;
+    const int round = button_view_ == button_view::checkbox ? (std::max)(2, size / 6) : size / 2;
     gr.draw_rect(bounds, enabled_ && (turned_ || active) ? accent : outline, fill, stroke, round);
 
     if (button_view_ == button_view::switcher)
@@ -344,13 +344,13 @@ void button::draw_indicator(graphic &gr, rect bounds)
         const int inset = (std::max)(3, size / 6);
         const int diameter = size - inset * 2;
         const int x = turned_ ? bounds.right - inset - diameter : bounds.left + inset;
-        gr.draw_rect({x, bounds.top + inset, x + diameter, bounds.bottom - inset}, mark, mark, 0, diameter);
+        gr.draw_rect({x, bounds.top + inset, x + diameter, bounds.bottom - inset}, mark, mark, 0, diameter / 2);
     }
     else if (turned_ && button_view_ == button_view::radio)
     {
         const int inset = size / 3;
         gr.draw_rect({bounds.left + inset, bounds.top + inset, bounds.right - inset, bounds.bottom - inset},
-            mark, mark, 0, size);
+            mark, mark, 0, (size - inset * 2) / 2);
     }
     else if (turned_)
     {

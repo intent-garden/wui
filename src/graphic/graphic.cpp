@@ -7,6 +7,7 @@
 //
 
 #include <wui/graphic/graphic.hpp>
+#include "rounded_rect.hpp"
 #include <wui/common/flag_helpers.hpp>
 #include <wui/system/tools.hpp>
 
@@ -486,6 +487,9 @@ void DrawRoundBox(HDC dc,
 
 void graphic::draw_rect(rect position, color border_color, color fill_color, uint32_t border_width, uint32_t rnd)
 {
+    if (position.width() <= 0 || position.height() <= 0) return;
+    // Corner arcs must not overlap, including round radio dots and switch thumbs.
+    rnd = clamp_corner_radius(position, rnd);
 #ifdef _WIN32
     DrawRoundBox(mem_dc, position, rnd, border_width, fill_color, border_color);
 #elif __linux__
