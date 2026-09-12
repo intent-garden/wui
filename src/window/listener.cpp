@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <functional>
 #include <limits>
+#include <optional>
 #include <poll.h>
 #include <sys/eventfd.h>
 #include <unistd.h>
@@ -23,6 +24,14 @@
 
 namespace wui
 {
+
+namespace
+{
+// Events processed per pass: bounds timer latency under a continuous stream
+// of X events (the loop returns and due timers are dispatched between
+// batches).
+constexpr int kMaxEventsPerBatch = 64;
+}
 
 listener::listener()
     : context_{},
@@ -218,9 +227,12 @@ bool listener::drain_xcb_events()
 {
     bool processed = false;
     xcb_generic_event_t *e = nullptr;
-    while ((e = xcb_poll_for_event(context_.connection)))
+    int handled = 0;
+    while (handled < kMaxEventsPerBatch &&
+           (e = xcb_poll_for_event(context_.connection)))
     {
         processed = true;
+        ++handled;
         xcb_window_t w = e->pad[2];
 
         switch (e->response_type & ~0x80)
@@ -282,13 +294,20 @@ listener::timer_id listener::schedule_timer(std::chrono::milliseconds interval,
 
 bool listener::clear_timer(timer_id id)
 {
-    bool removed = false;
+    // The callback is extracted under the lock and destroyed AFTER releasing
+    // it: its destructor may re-enter clear_timer/schedule_timer (e.g. through
+    // a shared_ptr that cancels another timer) and re-acquire the mutex.
+    std::optional<Timer> removed;
     {
         std::lock_guard<std::mutex> lock(timer_mutex_);
-        removed = timers_.erase(id) > 0;
+        auto it = timers_.find(id);
+        if (it == timers_.end()) return false;
+        removed.emplace(std::move(it->second));
+        timers_.erase(it);  // only the already-moved entry is destroyed here
     }
-    if (removed) wake_timer_thread();
-    return removed;
+    removed.reset();        // callback destructor runs without the lock
+    wake_timer_thread();
+    return true;
 }
 
 size_t listener::timer_count() const
@@ -335,6 +354,11 @@ void listener::dispatch_due_timers()
             it->second.next = std::chrono::steady_clock::now() + it->second.interval;
         }
     }
+}
+
+error const &listener::get_error() const
+{
+    return err;
 }
 
 listener& get_listener()
