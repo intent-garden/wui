@@ -145,6 +145,7 @@
       "type": "input",
       "background": "#27292d",
       "text": "#f0ebf0",
+      "placeholder": "#8a8f98",
       "selection": "#264f78",
       "cursor": "#d2d2d2",
       "border": "#27292d",

@@ -92,6 +92,7 @@
       "type": "input",
       "background": "#fcfcfc",
       "text": "#191914",
+      "placeholder": "#6b6b66",
       "selection": "#99c9ef",
       "cursor": "#141414",
       "border": "#f0f0f0",

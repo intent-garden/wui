@@ -167,6 +167,16 @@ void input::draw(graphic &gr, rect)
 
     mem_gr->clear();
 
+    bool empty_content = true;
+    for (const auto &line : lines_)
+    {
+        if (!line.empty())
+        {
+            empty_content = false;
+            break;
+        }
+    }
+
     if (line_height > 0)
     {
         // We start from the scroll position
@@ -229,6 +239,17 @@ void input::draw(graphic &gr, rect)
             {
                 std::string str; str.resize(utf8::distance(lines_[i].begin(), lines_[i].end()), '*');
                 mem_gr->draw_text({ INPUT_HORIZONTAL_INDENT - scroll_offset_x, actual_y }, str, theme_color(tcn, tv_text, theme_), font_);
+            }
+
+            // Placeholder, while there is nothing to read
+            if (empty_content && i == 0 && !placeholder_.empty())
+            {
+                auto placeholder_color = theme_color(tcn, tv_placeholder, theme_);
+                if (placeholder_color == 0)
+                {
+                    placeholder_color = theme_color(tcn, tv_text, theme_);
+                }
+                mem_gr->draw_text({ INPUT_HORIZONTAL_INDENT - scroll_offset_x, actual_y }, placeholder_, placeholder_color, font_);
             }
 
             // Cursor
@@ -695,6 +716,21 @@ void input::set_text(std::string_view text__)
     reset_state();
     redraw();
     if (change_callback) change_callback();
+}
+
+void input::set_placeholder(std::string_view text)
+{
+    if (placeholder_ == text)
+    {
+        return;
+    }
+    placeholder_ = text;
+    redraw();
+}
+
+const std::string &input::placeholder() const
+{
+    return placeholder_;
 }
 
 void input::set_input_view(input_view input_view__)

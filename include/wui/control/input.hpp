@@ -86,6 +86,9 @@ public:
     void set_text(std::string_view text);
     std::string text() const;
 
+    void set_placeholder(std::string_view text);
+    const std::string &placeholder() const;
+
     void set_input_view(input_view input_view_);
     input_view get_input_view() const;
     void set_input_content(input_content input_content_);
@@ -106,6 +109,7 @@ public:
     static constexpr const char *tv_text = "text";
     static constexpr const char *tv_selection = "selection";
     static constexpr const char *tv_cursor = "cursor";
+    static constexpr const char *tv_placeholder = "placeholder";
     static constexpr const char *tv_border = "border";
     static constexpr const char *tv_border_width = "border_width";
     static constexpr const char *tv_hover_border = "hover_border";
@@ -141,6 +145,8 @@ private:
 
     std::string tcn; /// control name in theme
     std::shared_ptr<i_theme> theme_;
+
+    std::string placeholder_; /// hint shown while the field is empty
 
     rect position_;
 
