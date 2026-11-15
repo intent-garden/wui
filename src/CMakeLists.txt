@@ -1,6 +1,11 @@
 file(GLOB SOURCES CONFIGURE_DEPENDS
     common/*.cpp control/*.cpp config/*.cpp event/*.cpp framework/*.cpp
     graphic/*.cpp theme/*.cpp locale/*.cpp system/*.cpp window/*.cpp)
+if(WIN32)
+    list(REMOVE_ITEM SOURCES
+        "${CMAKE_CURRENT_SOURCE_DIR}/system/udev_handler.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/window/listener.cpp")
+endif()
 if(APPLE OR EMSCRIPTEN)
     list(REMOVE_ITEM SOURCES
         "${CMAKE_CURRENT_SOURCE_DIR}/graphic/graphic.cpp"
