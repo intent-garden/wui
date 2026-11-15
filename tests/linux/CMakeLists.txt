@@ -1,0 +1,5 @@
+add_executable(wui_linux_test integration.cpp)
+target_link_libraries(wui_linux_test PRIVATE wui)
+target_compile_definitions(wui_linux_test PRIVATE WUI_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+add_test(NAME linux_integration COMMAND wui_linux_test)
+set_tests_properties(linux_integration PROPERTIES TIMEOUT 45)

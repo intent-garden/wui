@@ -309,20 +309,7 @@ void window::redraw(rect redraw_position, bool clear)
         InvalidateRect(context_.hwnd, &invalidatingRect, clear ? TRUE : FALSE);
 #elif __linux__
         if (context_.connection)
-        {
-            xcb_expose_event_t event = { 0 };
-
-            event.window = context_.wnd;
-            event.response_type = XCB_EXPOSE;
-            event.x = redraw_position.left > 0 ? redraw_position.left : 0;
-            event.y = redraw_position.top > 0 ? redraw_position.top : 0;
-            event.width = redraw_position.width() > 0 ? redraw_position.width() : 0;
-            event.height = redraw_position.height() > 0 ? redraw_position.height() : 0;
-            event.pad0 = clear ? 1 : 0;
-
-            xcb_send_event(context_.connection, false, context_.wnd, XCB_EVENT_MASK_EXPOSURE, (const char*)&event);
-            xcb_flush(context_.connection);
-        }
+            get_listener().request_redraw(context_.wnd, redraw_position, clear);
 #elif __EMSCRIPTEN__
         wasm_window_backend::invalidate(*this, redraw_position);
 #elif __APPLE__
@@ -1259,7 +1246,13 @@ void window::enable_device_change_handling(bool yes)
 #elif __linux__
     if (yes && !udev_handler_)
     {
-        udev_handler_ = std::make_unique<udev_handler>(std::bind(&wui::window::send_event_to_plains, this, std::placeholders::_1));
+        std::weak_ptr<window> weak = shared_from_this();
+        udev_handler_ = std::make_unique<udev_handler>([weak](const event& ev) {
+            get_listener().post([weak, ev] {
+                if (auto target = weak.lock())
+                    if (target->context().valid()) target->send_event_to_plains(ev);
+            });
+        });
         udev_handler_->start();
     }
     else if (!yes && udev_handler_)
@@ -2053,13 +2046,11 @@ bool window::init(std::string_view caption_, rect position__, window_style style
 
     xcb_flush(context_.connection);
 
-    send_internal(internal_event_type::window_created, 0, 0);
-
-    send_internal(internal_event_type::size_changed, position_.width(), position_.height());
-
     graphic_.init(get_screen_size(context_), theme_color(tcn, tv_background, theme_));
-
     started = true;
+
+    send_internal(internal_event_type::window_created, 0, 0);
+    send_internal(internal_event_type::size_changed, position_.width(), position_.height());
 
     get_listener().add_window(context_.wnd, shared_from_this());
 #elif __EMSCRIPTEN__
@@ -3306,7 +3297,9 @@ void window::process_events(xcb_generic_event_t &e)
 
                 if (ev.width != old_position.width() || ev.height != old_position.height())
                 {
-                    graphic_.clear({ 0, 0, ev.width, ev.height });
+                    // Clear and repaint once after the resize burst, on the UI
+                    // thread, rather than painting every intermediate size.
+                    redraw({0, 0, ev.width, ev.height}, true);
                 }
 
                 if (window_state_ == window_state::maximized)
