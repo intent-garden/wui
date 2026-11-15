@@ -229,19 +229,17 @@ bool video_capture::start_camera(const std::string& id, video_size size, unsigne
     [session beginConfiguration];
     if (![session canAddInput:input]) {impl_->error = "Cannot add camera input"; return false;}
     [session addInput:input];
-    if (![camera lockForConfiguration:&error]) {impl_->error = utf8(error.localizedDescription); return false;}
-    camera.activeFormat = selected;
-    camera.activeVideoMinFrameDuration = frameDuration;
-    camera.activeVideoMaxFrameDuration = frameDuration;
-    [camera unlockForConfiguration];
     AVCaptureVideoDataOutput* output = [AVCaptureVideoDataOutput new];
     output.alwaysDiscardsLateVideoFrames = YES;
-    output.videoSettings = @{(__bridge NSString*)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA)};
+    output.videoSettings = @{
+        (__bridge NSString*)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA),
+        (__bridge NSString*)kCVPixelBufferWidthKey: @(size.width),
+        (__bridge NSString*)kCVPixelBufferHeightKey: @(size.height)};
     if (![session canAddOutput:output]) {impl_->error = "Cannot add camera output"; return false;}
     [session addOutput:output];
     [session commitConfiguration];
     impl_->delegate = [WuiVideoReceiver new];
-    auto accepting = impl_->accepting = std::make_shared<std::atomic<bool>>(true);
+    auto accepting = impl_->accepting = std::make_shared<std::atomic<bool>>(false);
     impl_->delegate.receive = ^(CMSampleBufferRef sample) {
         if (!*accepting) return;
         CVPixelBufferRef pixels = CMSampleBufferGetImageBuffer(sample);
@@ -254,6 +252,14 @@ bool video_capture::start_camera(const std::string& id, video_size size, unsigne
     impl_->session = session;
     [session startRunning];
     if (!session.isRunning) {impl_->error = "Camera failed to start"; stop(); return false;}
+    // startRunning may restore the session preset and reset frame durations.
+    // Apply exact device settings after startup, before publishing any frames.
+    if (![camera lockForConfiguration:&error]) {impl_->error = utf8(error.localizedDescription); stop(); return false;}
+    camera.activeFormat = selected;
+    camera.activeVideoMinFrameDuration = frameDuration;
+    camera.activeVideoMaxFrameDuration = frameDuration;
+    [camera unlockForConfiguration];
+    *accepting = true;
     return true;
 }
 bool video_capture::start_screen(video_size size, unsigned fps, callback receive)
