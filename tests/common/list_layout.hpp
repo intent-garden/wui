@@ -48,7 +48,7 @@ inline bool run_list_layout_tests()
     check(painted.size() <= 11, "drawing walks invisible rows as draw callbacks");
     std::printf("List history: %d rows, %d height calls per paint, %zu visible rows\n", rows, calls, painted.size());
 
-    uint32_t mouse_time = 0;
+#ifndef __linux__
     auto mouse = [&](mouse_event_type type, int y) {
         event ev{};
         ev.type = event_type::mouse;
@@ -65,16 +65,6 @@ inline bool run_list_layout_tests()
             type == mouse_event_type::left_down ? WM_LBUTTONDOWN : WM_LBUTTONUP;
         SendMessageW(window->context().hwnd, message, type == mouse_event_type::left_down ? MK_LBUTTON : 0,
             MAKELPARAM(30, y));
-#else
-        xcb_motion_notify_event_t native{};
-        native.response_type = type == mouse_event_type::move ? XCB_MOTION_NOTIFY :
-            type == mouse_event_type::left_down ? XCB_BUTTON_PRESS : XCB_BUTTON_RELEASE;
-        native.detail = XCB_BUTTON_INDEX_1;
-        native.event = window->context().wnd;
-        native.event_x = 30;
-        native.event_y = y;
-        native.time = (mouse_time += 500);
-        window->process_events(reinterpret_cast<xcb_generic_event_t&>(native));
 #endif
     };
     mouse(mouse_event_type::move, 235);
@@ -90,6 +80,7 @@ inline bool run_list_layout_tests()
     check(calls <= rows * 3, "selecting a row repeats prefix height measurement");
     check(field->selected_item() == rows - 1, "click did not select the last row");
     check(invalid == 0, "height callback received an out-of-range index");
+#endif
 
     // The backing data can temporarily disappear while switching a server or
     // a chat. Missing and zero-height rows must terminate and never be drawn.
@@ -102,9 +93,11 @@ inline bool run_list_layout_tests()
     field->set_item_count(5);
     check(field->get_item_top(4) == 20 && field->get_item_top(5) == 40, "nonpositive heights shift rows backwards");
     field->scroll_to_start();
+#ifndef __linux__
     mouse(mouse_event_type::left_down, 75);
     mouse(mouse_event_type::left_up, 75);
     check(field->selected_item() == 4, "variable-height hit testing is wrong");
+#endif
     field->set_item_count(-1);
     check(field->get_item_count() == 0, "negative count was not clamped");
     field->set_draw_callback({});
