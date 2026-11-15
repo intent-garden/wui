@@ -7,7 +7,7 @@ from its owning event thread. Internal locks around subscriptions do not make
 | Platform | `timer` callback |
 | --- | --- |
 | Windows | Owning UI/message-loop thread |
-| Linux | Timer's worker thread |
+| Linux | Shared X11 event thread |
 | macOS | Main UI thread |
 | WASM | Browser main thread; background tabs can throttle it |
 
@@ -31,8 +31,25 @@ timer.stop();
 `emit_event(x,y)` delivers an `internal_event_type::user_emitted` event. Transfer
 larger data using application-owned storage with appropriate synchronization;
 the two integer arguments are not object ownership. Join workers and stop timers
-before destroying the data they capture. Do not stop/destroy a Linux worker timer
-from its own callback, because `stop()` joins its worker thread.
+before destroying the data they capture.
+
+On Linux, `timer` callbacks, X11 events, device-change notifications and painting
+share the listener thread. Timer intervals use a steady clock; missed ticks are
+skipped rather than delivered in a catch-up burst. Callbacks must remain short:
+move decoding, I/O and other expensive work to a worker.
+
+Linux `timer::stop()` prevents further invocations and waits for an in-flight
+callback when called from another thread. A callback can stop, restart or destroy
+its own timer. Stop timers before destroying objects they capture by raw pointer;
+the timer cannot extend those objects' lifetime automatically. Do not hold a
+lock needed by the callback while waiting in `stop()`.
+
+Linux worker code can use `get_listener().post(callback)` (include
+`<wui/window/listener.h>`) to schedule UI work. Capture the receiver through a
+`weak_ptr`, and lock it inside the queued callback. `post()` is asynchronous and
+does not make other direct access to control state safe. The lower-level
+`listener::clear_timer()` is also asynchronous; use `wui::timer` when synchronized
+cancellation is needed.
 
 The WASM backend currently has no WUI pthread/Worker integration. On macOS all UI
 initialization, event processing and drawing must run on the main thread.

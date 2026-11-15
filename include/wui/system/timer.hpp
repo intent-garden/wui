@@ -41,6 +41,23 @@ private:
     std::function<void(void)> callback_;
     void *native_timer_ = nullptr;
 };
+#elif defined(__linux__)
+/// Linux UI timer: callbacks run on the X11 event thread, never a private
+/// worker. stop() waits for an in-flight callback except when called by that
+/// callback itself. Stop before destroying objects captured by raw pointer.
+class timer
+{
+public:
+    explicit timer(std::function<void()> callback);
+    ~timer();
+    void start(uint32_t interval = 1000);
+    void stop();
+    timer(const timer&) = delete;
+    timer& operator=(const timer&) = delete;
+private:
+    struct state;
+    std::shared_ptr<state> state_;
+};
 #elif !defined(_WIN32)
 class timer
 {

@@ -40,6 +40,10 @@ if(WUI_BUILD_TESTS AND WIN32)
     add_subdirectory(tests/windows)
 endif()
 
+if(WUI_BUILD_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    add_subdirectory(tests/linux)
+endif()
+
 if(WUI_BUILD_TESTS AND EMSCRIPTEN)
     add_subdirectory(tests/wasm)
 endif()
