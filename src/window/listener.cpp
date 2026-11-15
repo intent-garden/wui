@@ -52,6 +52,13 @@ void listener::delete_window(xcb_window_t id)
 
 bool listener::init()
 {
+    // Xlib must know it is going to be used from more than one thread before any
+    // other Xlib call. This display is polled by the listener thread while the
+    // application creates and destroys windows from its own thread on the same
+    // connection; without this the shared Xlib/XCB state is not protected and
+    // the process dies inside xcb_send_request.
+    XInitThreads();
+
     context_.display = XOpenDisplay(NULL);
     if (!context_.display)
     {
