@@ -53,6 +53,7 @@ public:
     ~video_capture();
     video_capture(const video_capture&) = delete;
     video_capture& operator=(const video_capture&) = delete;
+    // Exact dimensions; fps is a target, negotiated against the camera ranges.
     bool start_camera(const std::string& id, video_size size, unsigned fps, callback receive);
     bool start_screen(video_size size, unsigned fps, callback receive);
     void stop();

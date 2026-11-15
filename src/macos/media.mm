@@ -1,5 +1,6 @@
 // Copyright (c) 2026 Intent Garden Org. Boost Software License 1.0.
 #include <wui/media/devices.hpp>
+#include "../media/frame_rate.hpp"
 #import <AVFoundation/AVFoundation.h>
 #import <AudioToolbox/AudioToolbox.h>
 #import <CoreAudio/CoreAudio.h>
@@ -203,12 +204,26 @@ bool video_capture::start_camera(const std::string& id, video_size size, unsigne
     AVCaptureDeviceInput* input = [AVCaptureDeviceInput deviceInputWithDevice:camera error:&error];
     if (!input) {impl_->error = utf8(error.localizedDescription); return false;}
     AVCaptureDeviceFormat* selected = nil;
+    CMTime frameDuration = kCMTimeInvalid;
+    detail::frame_rate_selection rate;
     for (AVCaptureDeviceFormat* format in camera.formats) {
-        auto d = CMVideoFormatDescriptionGetDimensions(format.formatDescription);
-        for (AVFrameRateRange* range in format.videoSupportedFrameRateRanges)
-            if (d.width == size.width && d.height == size.height && range.minFrameRate <= fps && range.maxFrameRate >= fps) selected = format;
+        auto dimensions = CMVideoFormatDescriptionGetDimensions(format.formatDescription);
+        if (dimensions.width != size.width || dimensions.height != size.height) continue;
+        for (AVFrameRateRange* range in format.videoSupportedFrameRateRanges) {
+            if (!rate.consider(fps, range.minFrameRate, range.maxFrameRate)) continue;
+            selected = format;
+            // Reuse the camera's exact time fraction at range boundaries (e.g.
+            // 30000/1001 or 15/2 FPS); rounding can make AVFoundation reject it.
+            if (rate.value == range.maxFrameRate) frameDuration = range.minFrameDuration;
+            else if (rate.value == range.minFrameRate) frameDuration = range.maxFrameDuration;
+            else frameDuration = CMTimeMake(1, fps);
+        }
     }
-    if (!selected) {impl_->error = "Requested camera format/frame rate is unavailable"; return false;}
+    if (!selected) {
+        impl_->error = "Requested camera resolution is unavailable: " + std::to_string(size.width)
+            + "x" + std::to_string(size.height);
+        return false;
+    }
     AVCaptureSession* session = [AVCaptureSession new];
 
     [session beginConfiguration];
@@ -216,8 +231,8 @@ bool video_capture::start_camera(const std::string& id, video_size size, unsigne
     [session addInput:input];
     if (![camera lockForConfiguration:&error]) {impl_->error = utf8(error.localizedDescription); return false;}
     camera.activeFormat = selected;
-    camera.activeVideoMinFrameDuration = CMTimeMake(1, fps);
-    camera.activeVideoMaxFrameDuration = CMTimeMake(1, fps);
+    camera.activeVideoMinFrameDuration = frameDuration;
+    camera.activeVideoMaxFrameDuration = frameDuration;
     [camera unlockForConfiguration];
     AVCaptureVideoDataOutput* output = [AVCaptureVideoDataOutput new];
     output.alwaysDiscardsLateVideoFrames = YES;

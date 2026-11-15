@@ -21,9 +21,11 @@ Each stream owns a separate AudioQueue. `start_*` first stops the previous strea
 
 ## Camera and screen
 
-`video_capture::start_camera()` selects a camera by ID and exact dimensions/frame
-rate. `device::sizes` lists dimensions, but frame-rate availability is checked when
-starting. Unsupported requests fail with `error()` rather than silently changing
+`video_capture::start_camera()` selects a camera by ID and exact dimensions. The frame rate is a
+target: choose the highest supported rate at or below it, or the lowest supported
+rate above it if no lower rate exists. Thus a camera advertising discrete
+30/24/20 FPS starts at 24 FPS when 25 FPS is requested. `device::sizes` lists dimensions, but frame-rate negotiation happens when
+starting. Unsupported resolutions fail with `error()` rather than silently changing
 size. Callbacks receive top-down BGRA pixels with a row stride; do not assume rows
 are tightly packed. `start_screen()` scales the primary display to the requested
 size using ScreenCaptureKit and requires macOS 12.3 or newer.
