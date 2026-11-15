@@ -20,6 +20,7 @@
 #include <mutex>
 #include <thread>
 #include <unordered_map>
+#include <deque>
 
 #ifdef __linux__
 #include <xcb/xcb.h>
@@ -29,12 +30,6 @@ namespace wui
 {
 
 #ifdef __linux__
-
-struct wnd
-{
-    std::shared_ptr<window> window_;
-    bool created = false;
-};
 
 class listener
 {
@@ -74,12 +69,18 @@ public:
     /// Number of active timers (for tests/introspection).
     size_t timer_count() const;
 
+    /// Enqueue work on the same thread as X11 events and UI timers.
+    void post(std::function<void()> callback);
+    void request_redraw(xcb_window_t id, rect area, bool clear);
+
 private:
     std::atomic<bool> started{false};
     std::thread thread;
     system_context context_;
 
-    std::unordered_map<xcb_window_t, wnd> windows;
+    std::unordered_map<xcb_window_t, std::shared_ptr<window>> windows;
+    mutable std::mutex windows_mutex_;
+    std::mutex init_mutex_;
 
     error err;
 
@@ -99,8 +100,17 @@ private:
     bool drain_xcb_events();
     void dispatch_due_timers();
     void wake_timer_thread();
+    std::shared_ptr<window> find_window(xcb_window_t id);
+    bool dispatch_tasks();
+    void paint_pending();
 
-    int wakeup_fd_{-1};
+    struct Damage { rect area; bool clear; };
+    std::mutex pending_mutex_;
+    std::unordered_map<xcb_window_t, Damage> damage_;
+    std::deque<std::function<void()>> tasks_;
+    std::chrono::steady_clock::time_point next_paint_{};
+
+    std::atomic<int> wakeup_fd_{-1};
     mutable std::mutex timer_mutex_;
     std::unordered_map<timer_id, Timer> timers_;
     timer_id next_timer_id_{kInvalidTimer + 1};

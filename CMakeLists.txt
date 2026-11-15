@@ -36,6 +36,10 @@ if(WUI_BUILD_TESTS AND APPLE)
     add_subdirectory(tests/macos)
 endif()
 
+if(WUI_BUILD_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    add_subdirectory(tests/linux)
+endif()
+
 if(WUI_BUILD_TESTS AND EMSCRIPTEN)
     add_subdirectory(tests/wasm)
 endif()

@@ -1,0 +1,27 @@
+name: Linux UI integration
+on:
+  push:
+    branches: [main, 'vg/linux-ui-loop']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  x11:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build and headless X11 dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++ pkg-config libboost-dev \
+            libcairo2-dev libxcb1-dev libxcb-cursor-dev libxcb-ewmh-dev \
+            libxcb-icccm4-dev libxcb-image0-dev libx11-dev libx11-xcb-dev \
+            libudev-dev xvfb xauth fonts-dejavu-core
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DWUI_BUILD_EXAMPLES=OFF -DWUI_BUILD_TESTS=ON
+      - name: Build
+        run: cmake --build build --parallel 2
+      - name: Test against Xvfb
+        run: xvfb-run -a -s '-screen 0 1280x1024x24' ctest --test-dir build --output-on-failure
