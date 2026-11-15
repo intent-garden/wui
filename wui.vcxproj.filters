@@ -278,6 +278,9 @@
     <ClCompile Include="src\graphic\graphic.cpp">
       <Filter>Source Files\graphic</Filter>
     </ClCompile>
+    <ClCompile Include="src\system\timer_win.cpp">
+      <Filter>Source Files\system</Filter>
+    </ClCompile>
     <ClCompile Include="src\system\tools.cpp">
       <Filter>Source Files\system</Filter>
     </ClCompile>

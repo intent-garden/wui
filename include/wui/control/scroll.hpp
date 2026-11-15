@@ -17,7 +17,7 @@
 
 #include <functional>
 #include <memory>
-#if defined(__APPLE__) || defined(__EMSCRIPTEN__)
+#if defined(__APPLE__) || defined(__EMSCRIPTEN__) || defined(_WIN32)
 #include <wui/system/timer.hpp>
 #else
 #include <thread>
@@ -135,7 +135,7 @@ private:
     };
 
     worker_action worker_action_;
-#if defined(__APPLE__) || defined(__EMSCRIPTEN__)
+#if defined(__APPLE__) || defined(__EMSCRIPTEN__) || defined(_WIN32)
     std::unique_ptr<timer> worker;
 #else
     std::thread worker;

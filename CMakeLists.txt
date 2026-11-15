@@ -36,6 +36,10 @@ if(WUI_BUILD_TESTS AND APPLE)
     add_subdirectory(tests/macos)
 endif()
 
+if(WUI_BUILD_TESTS AND WIN32)
+    add_subdirectory(tests/windows)
+endif()
+
 if(WUI_BUILD_TESTS AND EMSCRIPTEN)
     add_subdirectory(tests/wasm)
 endif()
