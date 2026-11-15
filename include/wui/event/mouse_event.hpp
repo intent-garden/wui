@@ -35,6 +35,9 @@ struct mouse_event
     int32_t x, y;
 
     int32_t wheel_delta;
+
+    /// vk_lshift/vk_rshift/vk_lcontrol/vk_rcontrol/vk_alt, or 0 when none is held.
+    uint8_t modifier;
 };
 
 }

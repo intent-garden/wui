@@ -292,7 +292,7 @@ private:
     void send_event_to_plains(const event &ev);
     void send_event_to_plains_and_control(const event& ev, const std::shared_ptr<i_control>& control);
 
-    void send_mouse_event(const mouse_event &ev);
+    void send_mouse_event(mouse_event ev);
 
     bool check_control_here(int32_t x, int32_t y);
 
