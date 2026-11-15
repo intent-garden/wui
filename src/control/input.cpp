@@ -693,6 +693,11 @@ void input::set_text(std::string_view text__)
 {
     update_lines(text__);
     reset_state();
+    if (!lines_.empty())
+    {
+        cursor_row = lines_.size() - 1;
+        cursor_col = utf8::distance(lines_[cursor_row].begin(), lines_[cursor_row].end());
+    }
     redraw();
     if (change_callback) change_callback();
 }
