@@ -34,6 +34,11 @@ void listener::add_window(xcb_window_t id, std::shared_ptr<window> window)
     {
         windows[id] = { std::move(window), false };
     }
+
+    // Closing the last window stops the event loop (see delete_window), so
+    // reopening a window has to restart it: without this the new window never
+    // receives events and is not even painted.
+    start();
 }
 
 void listener::delete_window(xcb_window_t id)
@@ -87,6 +92,14 @@ void listener::start()
     }
 
     started = true;
+
+    // The thread from a previous run is still joinable even though its loop has
+    // returned, and assigning over a joinable std::thread terminates the process.
+    if (thread.joinable())
+    {
+        thread.join();
+    }
+
     thread = std::thread(std::bind(&listener::process_events, this));
 }
 
