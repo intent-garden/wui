@@ -815,6 +815,38 @@ std::string input::text() const
     return oss.str();
 }
 
+void input::set_caret_position(size_t position)
+{
+    size_t characters = lines_.empty() ? 0 : lines_.size() - 1;
+    for (const auto &line : lines_) characters += utf8::distance(line.begin(), line.end());
+    if (position > characters) position = characters;
+
+    cursor_row = 0;
+    cursor_col = position;
+    for (size_t i = 0; i < lines_.size(); ++i)
+    {
+        auto length = utf8::distance(lines_[i].begin(), lines_[i].end());
+        if (cursor_col <= length) break;
+        cursor_col -= length + 1;
+        ++cursor_row;
+    }
+
+    select_start_row = select_end_row = cursor_row;
+    select_start_col = select_end_col = cursor_col;
+    preferred_col_valid_ = false;
+
+    scroll_to_cursor();
+    redraw();
+}
+
+size_t input::caret_position() const
+{
+    size_t position = cursor_col;
+    for (size_t i = 0; i < cursor_row && i < lines_.size(); ++i)
+        position += utf8::distance(lines_[i].begin(), lines_[i].end()) + 1;
+    return position;
+}
+
 void input::reset_state()
 {
     selecting = false;

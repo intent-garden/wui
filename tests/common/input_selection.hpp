@@ -323,6 +323,38 @@ inline bool run_input_selection_tests()
         equal(field->text(), std::string("X"));
         equal(changes, 1);
     });
+    test("set_caret_position places the caret for the next keystroke", [&] {
+        reset("abcdef");
+        field->set_caret_position(3);
+        typed("X");
+        equal(field->text(),std::string("abcXdef"));
+    });
+    test("set_caret_position counts characters, not bytes", [&] {
+        reset("я🦊abc");
+        field->set_caret_position(2);
+        typed("X");
+        equal(field->text(),std::string("я🦊Xabc"));
+    });
+    test("set_caret_position past the end clamps to the end", [&] {
+        reset("abc");
+        field->set_caret_position(99);
+        typed("X");
+        equal(field->text(),std::string("abcX"));
+    });
+    test("caret_position counts newlines across multiline text", [&] {
+        reset("one\ntwo",input_view::multiline);
+        field->set_caret_position(5);
+        equal(field->caret_position(),size_t{5});
+        typed("X");
+        equal(field->text(),std::string("one\ntXwo"));
+    });
+    test("set_caret_position drops the selection", [&] {
+        reset("abcdef\nx",input_view::multiline);
+        shortcut('a');
+        field->set_caret_position(3);
+        typed("X");
+        equal(field->text(),std::string("abcXdef\nx"));
+    });
     field->set_change_callback({});w->destroy();
     std::printf("Input selection: %d/%d passed\n",cases-failures,cases);
     return failures==0;

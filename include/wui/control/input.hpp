@@ -86,6 +86,10 @@ public:
     void set_text(std::string_view text);
     std::string text() const;
 
+    /// Caret position as a character index over the whole text, newlines included.
+    void set_caret_position(size_t position);
+    size_t caret_position() const;
+
     void set_input_view(input_view input_view_);
     input_view get_input_view() const;
     void set_input_content(input_content input_content_);
