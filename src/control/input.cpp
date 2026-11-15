@@ -493,6 +493,8 @@ void input::receive_control_events(const event &ev)
         {
             case internal_event_type::set_focus:
                 focused_ = true;
+                // Focus must show the caret immediately; the timer only blinks it.
+                cursor_visible = input_view_ != input_view::readonly;
 
                 redraw();
 
