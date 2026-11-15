@@ -47,6 +47,8 @@ elseif(APPLE)
     endif()
 elseif(WIN32)
     target_compile_definitions(wui PUBLIC NOMINMAX UNICODE _UNICODE)
+    # Windows uses only Nowide's inline UTF conversion helpers.
+    target_compile_definitions(wui PRIVATE BOOST_NOWIDE_NO_LIB)
     if(MSVC)
         target_compile_options(wui PRIVATE /utf-8)
     endif()
