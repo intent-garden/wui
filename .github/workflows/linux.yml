@@ -8,6 +8,10 @@ permissions:
   contents: read
 jobs:
   x11:
+    strategy:
+      fail-fast: false
+      matrix:
+        build: [release, sanitizers]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -20,8 +24,21 @@ jobs:
             libxcb-icccm4-dev libxcb-image0-dev libx11-dev libx11-xcb-dev \
             libudev-dev xvfb xauth fonts-dejavu-core
       - name: Configure
-        run: cmake -S . -B build -G Ninja -DWUI_BUILD_EXAMPLES=OFF -DWUI_BUILD_TESTS=ON
+        run: |
+          if [ '${{ matrix.build }}' = sanitizers ]; then
+            cmake -S . -B build -G Ninja -DWUI_BUILD_EXAMPLES=OFF -DWUI_BUILD_TESTS=ON \
+              -DCMAKE_BUILD_TYPE=Debug \
+              -DCMAKE_CXX_FLAGS='-fsanitize=address,undefined -fno-omit-frame-pointer' \
+              -DCMAKE_EXE_LINKER_FLAGS='-fsanitize=address,undefined'
+          else
+            cmake -S . -B build -G Ninja -DWUI_BUILD_EXAMPLES=OFF -DWUI_BUILD_TESTS=ON
+          fi
       - name: Build
         run: cmake --build build --parallel 2
       - name: Test against Xvfb
-        run: xvfb-run -a -s '-screen 0 1280x1024x24' ctest --test-dir build --output-on-failure
+        # Xlib/fontconfig maintain process-global caches; check invalid access
+        # and undefined behavior here, rather than their shutdown leak reports.
+        env:
+          ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: xvfb-run -a -s '-screen 0 1280x1024x24' ctest --test-dir build --output-on-failure -V

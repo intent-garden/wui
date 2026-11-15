@@ -1249,7 +1249,8 @@ void window::enable_device_change_handling(bool yes)
         std::weak_ptr<window> weak = shared_from_this();
         udev_handler_ = std::make_unique<udev_handler>([weak](const event& ev) {
             get_listener().post([weak, ev] {
-                if (auto target = weak.lock()) target->send_event_to_plains(ev);
+                if (auto target = weak.lock())
+                    if (target->context().valid()) target->send_event_to_plains(ev);
             });
         });
         udev_handler_->start();

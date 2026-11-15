@@ -23,3 +23,12 @@ wui::framework::run();
 ```
 
 See [Hello world](../howto/hello-world.md) and [threading](multi-threading.md).
+
+On Linux, the X11 listener remains alive when the last window closes; it stops
+when the listener is destroyed at process shutdown. A close callback can create
+another window. Redraw requests are merged per window and painted at most once
+per 16 ms scheduling interval. Resize bursts are collapsed before layout;
+queued geometry is applied before subsequent input and client messages. This
+bounds redundant work but cannot prevent a long application callback from
+blocking the event thread. Initialize controls before publishing their window,
+then perform subsequent mutations on the event thread.

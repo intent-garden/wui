@@ -47,11 +47,14 @@ listener::~listener()
 
 void listener::add_window(xcb_window_t id, std::shared_ptr<window> window)
 {
+    const auto size = window->position();
     {
         std::lock_guard<std::mutex> lock(windows_mutex_);
         windows.emplace(id, std::move(window));
     }
-    wake_timer_thread();
+    // Initial Expose events may have arrived before registration when the
+    // application constructs the window outside the event thread.
+    request_redraw(id, {0, 0, size.width(), size.height()}, true);
 }
 
 void listener::delete_window(xcb_window_t id)
@@ -209,7 +212,11 @@ void listener::process_events()
             {
                 const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
                     next_paint_ - std::chrono::steady_clock::now()).count();
-                timeout_ms = std::min(timeout_ms, static_cast<int>(std::max<long long>(0, remaining)));
+                // Round up positive sub-millisecond waits instead of spinning
+                // with poll(..., 0) just before every paint deadline.
+                const int paint_timeout = next_paint_ <= std::chrono::steady_clock::now()
+                    ? 0 : static_cast<int>(remaining + 1);
+                timeout_ms = std::min(timeout_ms, paint_timeout);
             }
         }
 

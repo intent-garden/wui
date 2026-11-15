@@ -59,9 +59,9 @@ public:
                             std::function<void()> callback);
     /// Cancels a timer. Returns false when the id is not registered.
     ///
-    /// Cancellation is asynchronous with respect to a callback that is already
-    /// running: clear_timer() does not wait for it to finish, so objects
-    /// captured by a running callback (raw pointers/references) must not be
+    /// Cancellation is asynchronous with respect to a callback already copied
+    /// for dispatch (even if it has not entered user code yet). clear_timer()
+    /// does not wait for it to finish, so objects captured by it must not be
     /// considered safe to release just because the timer was cancelled. Use
     /// shared ownership or an explicit lifetime token when the callback may
     /// outlive the cancellation point.

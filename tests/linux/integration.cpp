@@ -69,7 +69,11 @@ int main()
             label = std::make_shared<painted_text>();
             window->add_control(label, {0, 0, 250, 200});
             window->subscribe([&](const wui::event& ev) {
-                if (ev.internal_event_.type == wui::internal_event_type::window_created) ++created;
+                if (ev.internal_event_.type == wui::internal_event_type::window_created)
+                {
+                    ++created;
+                    CHECK(window->get_graphic().drawable());
+                }
                 if (ev.internal_event_.type == wui::internal_event_type::size_changed) ++resized;
                 if (ev.internal_event_.type == wui::internal_event_type::user_emitted)
                 {
@@ -155,7 +159,7 @@ int main()
         CHECK(listener.timer_count() == 0);
 
         // A redraw storm produces a bounded number of paints. The union must
-        // cover both requested areas and retain clear=true across the merge.
+        // cover both requested areas, including the one requesting a clear.
         int before = on_ui([&] {
             auto count = label->paints;
             for (int i = 0; i < 10000; ++i)
@@ -167,6 +171,7 @@ int main()
             CHECK(label->paints - before <= 3);
             CHECK(label->last_area.left == 0 && label->last_area.top == 0);
             CHECK(label->last_area.right >= 200 && label->last_area.bottom >= 180);
+            std::printf("Redraw storm: 10000 requests -> %d paints\n", label->paints - before);
         });
 
         // Queue real X11 events on a single UI turn. event != window exercises
@@ -195,6 +200,7 @@ int main()
         on_ui([&] {
             CHECK(width_at_input == 399);
             CHECK(resized > before_resize && resized - before_resize < 40);
+            std::printf("Resize storm: 1000 events -> %d layout callbacks\n", resized - before_resize);
         });
 
         // Close the last window, then create another INSIDE its close callback.
@@ -210,6 +216,12 @@ int main()
             window->destroy();
         });
         until([&] { return on_ui([&] { return closed == 2; }); });
+        // Timers remain usable even while there are no windows in the registry.
+        std::atomic<int> idle_ticks{0};
+        wui::timer idle([&] { ++idle_ticks; });
+        idle.start(1);
+        until([&] { return idle_ticks.load() >= 2; });
+        idle.stop();
         on_ui([&] {
             window.reset();
             window = std::make_shared<wui::window>();
@@ -219,6 +231,16 @@ int main()
         });
         until([&] { return on_ui([&] { return closed == 3; }); });
         on_ui([&] { window.reset(); });
+        // An idle listener must wake and join promptly at destruction, without
+        // waiting for another X event. CTest bounds this test's total runtime.
+        {
+            wui::listener isolated;
+            CHECK(isolated.init());
+            std::promise<void> running;
+            auto ready = running.get_future();
+            isolated.post([&] { running.set_value(); });
+            CHECK(ready.wait_for(5s) == std::future_status::ready);
+        }
         std::puts("PASS: Linux UI timer lifecycle, redraw batching, resize/input ordering and window reopening");
         return 0;
     }
