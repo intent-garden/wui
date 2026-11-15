@@ -1,6 +1,11 @@
 file(GLOB SOURCES CONFIGURE_DEPENDS
     common/*.cpp control/*.cpp config/*.cpp event/*.cpp framework/*.cpp
     graphic/*.cpp theme/*.cpp locale/*.cpp system/*.cpp window/*.cpp)
+if(WIN32)
+    list(REMOVE_ITEM SOURCES
+        "${CMAKE_CURRENT_SOURCE_DIR}/system/udev_handler.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/window/listener.cpp")
+endif()
 if(APPLE OR EMSCRIPTEN)
     list(REMOVE_ITEM SOURCES
         "${CMAKE_CURRENT_SOURCE_DIR}/graphic/graphic.cpp"
@@ -40,6 +45,14 @@ elseif(APPLE)
             "-framework CoreAudio" "-framework CoreMedia" "-framework CoreVideo"
             "-weak_framework ScreenCaptureKit")
     endif()
+elseif(WIN32)
+    target_compile_definitions(wui PUBLIC NOMINMAX UNICODE _UNICODE)
+    # Windows uses only Nowide's inline UTF conversion helpers.
+    target_compile_definitions(wui PRIVATE BOOST_NOWIDE_NO_LIB)
+    if(MSVC)
+        target_compile_options(wui PRIVATE /utf-8)
+    endif()
+    target_link_libraries(wui PUBLIC gdiplus setupapi)
 elseif(UNIX)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(CAIRO REQUIRED IMPORTED_TARGET cairo)

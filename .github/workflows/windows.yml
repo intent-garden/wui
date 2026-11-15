@@ -1,0 +1,35 @@
+name: Windows examples and UI timers
+on:
+  push:
+    branches: [main, 'vg/windows-ui-timers']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  msvc:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [Debug, Release]
+        arch: [x64, Win32]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: microsoft/setup-msbuild@v2
+      - name: Build Visual Studio examples
+        shell: pwsh
+        run: |
+          $platform = if ('${{ matrix.arch }}' -eq 'Win32') { 'x86' } else { 'x64' }
+          msbuild wui.sln '/t:demo;simple;hw' /m:2 /nologo /v:minimal '/p:Configuration=${{ matrix.config }}' "/p:Platform=$platform"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Configure integration tests
+        run: cmake -S . -B build -G 'Visual Studio 17 2022' -A '${{ matrix.arch }}' -DWUI_BUILD_EXAMPLES=OFF -DWUI_BUILD_TESTS=ON
+      - name: Build integration tests
+        run: cmake --build build --config '${{ matrix.config }}' --parallel 2
+      - name: Test
+        run: ctest --test-dir build -C '${{ matrix.config }}' --output-on-failure -V

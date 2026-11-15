@@ -6,7 +6,7 @@ from its owning event thread. Internal locks around subscriptions do not make
 
 | Platform | `timer` callback |
 | --- | --- |
-| Windows | Windows timer queue worker |
+| Windows | Owning UI/message-loop thread |
 | Linux | Shared X11 event thread |
 | macOS | Main UI thread |
 | WASM | Browser main thread; background tabs can throttle it |
@@ -53,3 +53,17 @@ cancellation is needed.
 
 The WASM backend currently has no WUI pthread/Worker integration. On macOS all UI
 initialization, event processing and drawing must run on the main thread.
+
+On Windows, construct `timer` on the thread that owns the UI message loop and
+keep that loop running while callbacks are needed. `start()` and `stop()` can
+be called from workers; native timer changes are queued back to the owner.
+`stop()` invalidates pending ticks immediately and waits for an in-flight
+callback from another thread. Self-stop, restart and self-destruction are
+supported. Do not hold a lock needed by the callback while waiting in `stop()`.
+A timer callback must remain short; perform blocking work on a separate worker.
+
+The Windows backend uses message-only windows and `WM_TIMER`, including its
+normal scheduling granularity (typically at least 10 ms). Cancellation filters
+stale messages even after a restart. Scrollbar animation also runs in short UI
+ticks, without joining an animation worker from mouse-event handlers. Rebuild
+the library and applications together after updating the timer implementation.

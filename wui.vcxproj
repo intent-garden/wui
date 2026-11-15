@@ -128,6 +128,7 @@
     <ClCompile Include="src\locale\locale_type.cpp" />
     <ClCompile Include="src\system\clipboard_tools.cpp" />
     <ClCompile Include="src\system\path_tools.cpp" />
+    <ClCompile Include="src\system\timer_win.cpp" />
     <ClCompile Include="src\system\tools.cpp" />
     <ClCompile Include="src\system\uri_tools.cpp" />
     <ClCompile Include="src\system\wm_tools.cpp" />
@@ -443,6 +444,11 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PreprocessorDefinitions>BOOST_NOWIDE_NO_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

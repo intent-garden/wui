@@ -53,7 +53,7 @@ MainFrame::MainFrame()
     buildingPage = 4; Lists();
     buildingPage = 5; Menus();
     buildingPage = 6; Layouts();
-    window->subscribe([this](const event& ev) {
+    this->window->subscribe([this](const event& ev) {
         if (ev.internal_event_.type == internal_event_type::size_changed ||
             ev.internal_event_.type == internal_event_type::window_expanded ||
             ev.internal_event_.type == internal_event_type::window_normalized) Layout();
@@ -63,24 +63,24 @@ MainFrame::~MainFrame()
 {
     if (child) child->destroy();
     message.reset();
-    for (auto& item : items) window->remove_control(item.control);
+    for (auto& item : items) this->window->remove_control(item.control);
 }
 void MainFrame::Run()
 {
-    window->set_min_size(800, 600);
-    window->set_control_callback([this](window_control control, std::string&, bool&) {
+    this->window->set_min_size(800, 600);
+    this->window->set_control_callback([this](window_control control, std::string&, bool&) {
         if (control != window_control::theme) return;
         auto next = get_next_app_theme();
         error err;
         if (set_default_theme_from_name(next, err)) {
             config::set_string("User", "Theme", next);
-            window->update_theme();
+            this->window->update_theme();
             if (child) child->update_theme();
             Notify("Theme / " + next);
         }
     });
     ShowPage(0);
-    window->init("wui / Showcase", {-1, -1, 800, 600},
+    this->window->init("wui / Showcase", {-1, -1, 800, 600},
         flags_map<window_style>(3, window_style::frame, window_style::switch_theme_button, window_style::border_all),
         [] { framework::stop(); });
     Layout();
@@ -90,11 +90,11 @@ void MainFrame::ShowPage(int next)
     page = next;
     for (auto& item : items) {
         if (item.page >= 0 && item.page != page && !item.control->parent().expired())
-            window->remove_control(item.control);
+            this->window->remove_control(item.control);
     }
     for (auto& item : items) {
         if (item.page == page && item.control->parent().expired()) {
-            window->add_control(item.control, item.bounds);
+            this->window->add_control(item.control, item.bounds);
             item.control->update_theme();
         }
     }
@@ -107,8 +107,8 @@ void MainFrame::ShowPage(int next)
 }
 void MainFrame::Layout()
 {
-    const int w = std::max(800, window->position().width());
-    const int h = std::max(600, window->position().height());
+    const int w = std::max(800, this->window->position().width());
+    const int h = std::max(600, this->window->position().height());
     for (auto& item : items) {
         auto r = item.bounds;
         // Expand the canvas while retaining comfortable font and control sizes.
@@ -118,7 +118,7 @@ void MainFrame::Layout()
         item.control->set_position(r);
     }
     if (layoutDetail) layoutDetail();
-    window->redraw({0, 0, w, h}, true);
+    this->window->redraw({0, 0, w, h}, true);
 }
 
 void MainFrame::Overview()
@@ -131,7 +131,7 @@ void MainFrame::Overview()
     auto mode = std::make_shared<int>(0);
     // The drawing callback uses its own panel bounds, so the graph follows resizing.
     auto chart = std::make_shared<panel>([this, amplitude, mode](graphic& gr) {
-        const auto w = std::max(800, window->position().width());
+        const auto w = std::max(800, this->window->position().width());
         const int left = 24 + 20*(w-48)/752, right = 24 + 436*(w-48)/752;
         auto grid = theme_color("input", "border");
         for (int y = 280; y <= 384; y += 26) gr.draw_line({left, y, right, y}, grid);
@@ -150,14 +150,14 @@ void MainFrame::Overview()
     auto meter = Add(std::make_shared<progress>(0,100,60), {44, 495, 460, 509});
     Add(std::make_shared<slider>(0,100,60,[this,amplitude,value,meter,chart](int n) {
         *amplitude=n; value->set_text("Amplitude / " + std::to_string(n) + "%");
-        meter->set_value(n); window->redraw(chart->position());
+        meter->set_value(n); this->window->redraw(chart->position());
     }), {44, 450, 460, 478});
     Label("TRY IT", {520, 190, 756, 218}, "accent_text");
     Label("A shared C++ UI", {520, 223, 756, 253}, "section_text");
     Label("Move the slider. Pick a signal.\nSwitch the theme in the title bar.\n\nThese are WUI controls,\nincluding the custom graph.", {520, 269, 756, 378});
     auto choice = Add(std::make_shared<wui::select>(), {520, 398, 756, 432});
     choice->set_items({{0,"Sine wave"},{1,"Square wave"}}); choice->select_item_number(0);
-    choice->set_change_callback([this,mode,chart](int, int64_t id) { *mode=int(id); window->redraw(chart->position()); });
+    choice->set_change_callback([this,mode,chart](int, int64_t id) { *mode=int(id); this->window->redraw(chart->position()); });
     Button("Explore input controls", {520, 450, 756, 486}, [this] { ShowPage(3); });
     Label("Built with WUI controls.", {520, 500, 756, 524}, "muted_text");
 }
@@ -335,15 +335,15 @@ void MainFrame::Layouts()
     auto ratio=std::make_shared<double>(.38);
     auto arrange=[this,left,right,text,weakSplit=std::weak_ptr<splitter>(split),ratio] {
         auto split=weakSplit.lock(); if(!split) return;
-        int w=std::max(800,window->position().width()); int x=24+int((w-48)* *ratio);
+        int w=std::max(800,this->window->position().width()); int x=24+int((w-48)* *ratio);
         left->set_position({24,178,x-6,430}); text->set_position({44,194,x-20,414});
         split->set_position({x-4,178,x+4,430}); split->set_margins(200,w-240);
         right->set_position({x+10,178,w-24,430});
     };
     layoutDetail=arrange;
     split->set_callback([this,ratio,arrange](int x,int) {
-        *ratio=double(x+4-24)/(std::max(800,window->position().width())-48); arrange();
-        window->redraw({0,178,window->position().width(),430},true);
+        *ratio=double(x+4-24)/(std::max(800,this->window->position().width())-48); arrange();
+        this->window->redraw({0,178,this->window->position().width(),430},true);
     });
     auto level=Add(std::make_shared<progress>(-100,100,25),{426,462,756,482});
     auto label=Label("Balance / +25",{426,498,756,530},"muted_text");

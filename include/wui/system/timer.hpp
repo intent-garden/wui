@@ -12,6 +12,9 @@
 #include <chrono>
 #include <thread>
 #else
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
 #endif
 
@@ -119,79 +122,21 @@ private:
 	}
 };
 #else
+/// Windows UI timer. Construct on the thread that owns the message loop.
+/// start/stop may be called from workers; callback delivery remains on the
+/// owning thread. stop waits for an in-flight callback, and is safe inside it.
 class timer
 {
 public:
-	explicit timer(std::function<void(void)> callback_)
-		: callback(callback_), h_timer(nullptr), h_timer_queue(nullptr), started(false)
-	{
-	}
-
-	~timer()
-	{
-		stop();
-	}
-
-	void start(const uint32_t interval = 1000)
-	{
-		if (started || h_timer_queue)
-		{
-			return;
-		}
-
-        h_timer_queue = CreateTimerQueue();
-		if (!h_timer_queue)
-		{
-			throw std::exception("Error CreateTimerQueue()");
-		}
-
-		if (!CreateTimerQueueTimer(&h_timer, h_timer_queue,
-			(WAITORTIMERCALLBACK)TimerRoutine, this, 0, interval, WT_EXECUTEDEFAULT))
-		{
-			throw std::exception("Error CreateTimerQueueTimer()");
-		}
-		started = true;
-	}
-
-	void stop()
-	{
-		if (!started)
-		{
-			return;
-		}
-
-		if (h_timer && h_timer_queue)
-		{
-			if (FALSE == DeleteTimerQueueTimer(h_timer_queue, h_timer, INVALID_HANDLE_VALUE)
-				 && ERROR_IO_PENDING != GetLastError())
-			{
-				DeleteTimerQueueTimer(h_timer_queue, h_timer, INVALID_HANDLE_VALUE);
-			}
-         h_timer = nullptr;
-		}
-		if (h_timer_queue)
-		{
-			(void) DeleteTimerQueueEx(h_timer_queue, INVALID_HANDLE_VALUE);
-         h_timer_queue = nullptr;
-		}
-		started = false;
-	}
-
-	timer(const timer&) = delete;
-	timer& operator=(const timer&) = delete;
-
+    explicit timer(std::function<void()> callback);
+    ~timer();
+    void start(uint32_t interval = 1000);
+    void stop();
+    timer(const timer&) = delete;
+    timer& operator=(const timer&) = delete;
 private:
-	std::function<void(void)> callback;
-
-	HANDLE h_timer;
-    HANDLE h_timer_queue;
-
-	std::atomic<bool> started;
-
-	static VOID CALLBACK TimerRoutine(PVOID lpParam, BOOLEAN)
-	{
-		static_cast<timer*>(lpParam)->callback();
-	}
+    struct state;
+    std::shared_ptr<state> state_;
 };
 #endif
 

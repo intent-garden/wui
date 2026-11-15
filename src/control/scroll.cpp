@@ -706,7 +706,7 @@ void scroll::start_work(worker_action action)
     if (!worker_started)
     {
         worker_started = true;
-#if defined(__APPLE__) || defined(__EMSCRIPTEN__)
+#if defined(__APPLE__) || defined(__EMSCRIPTEN__) || defined(_WIN32)
         if (!worker)
         {
             auto weak = weak_from_this();
@@ -725,7 +725,7 @@ void scroll::start_work(worker_action action)
 
 void scroll::work()
 {
-#if defined(__APPLE__) || defined(__EMSCRIPTEN__)
+#if defined(__APPLE__) || defined(__EMSCRIPTEN__) || defined(_WIN32)
     // One step per main-loop timer tick on UI-thread-only platforms.
     if (worker_started)
 #else
@@ -736,13 +736,13 @@ void scroll::work()
         {
         case worker_action::scroll_up:
             scroll_up();
-#if !defined(__APPLE__) && !defined(__EMSCRIPTEN__)
+#if !defined(__APPLE__) && !defined(__EMSCRIPTEN__) && !defined(_WIN32)
             std::this_thread::sleep_for(std::chrono::milliseconds(20));
 #endif
         break;
         case worker_action::scroll_down:
             scroll_down();
-#if !defined(__APPLE__) && !defined(__EMSCRIPTEN__)
+#if !defined(__APPLE__) && !defined(__EMSCRIPTEN__) && !defined(_WIN32)
             std::this_thread::sleep_for(std::chrono::milliseconds(20));
 #endif
         break;
@@ -767,14 +767,14 @@ void scroll::work()
                 if (callback) callback(scroll_state::activated, static_cast<int32_t>(0));
             }
 
-#if !defined(__APPLE__) && !defined(__EMSCRIPTEN__)
+#if !defined(__APPLE__) && !defined(__EMSCRIPTEN__) && !defined(_WIN32)
             std::this_thread::sleep_for(std::chrono::milliseconds(20));
 #endif
         break;
         default: break;
         }
     }
-#if defined(__APPLE__) || defined(__EMSCRIPTEN__)
+#if defined(__APPLE__) || defined(__EMSCRIPTEN__) || defined(_WIN32)
     if (!worker_started && worker) worker->stop();
 #endif
 }
@@ -782,7 +782,7 @@ void scroll::work()
 void scroll::end_work()
 {
     worker_started = false;
-#if defined(__APPLE__) || defined(__EMSCRIPTEN__)
+#if defined(__APPLE__) || defined(__EMSCRIPTEN__) || defined(_WIN32)
     if (worker) worker->stop();
 #else
     if (worker.joinable()) worker.join();
