@@ -75,16 +75,16 @@ void set_cursor(system_context &context, cursor cursor_)
     switch (cursor_)
     {
         case cursor::default_:
-            cursor_id = "arrow";
+            cursor_id = "left_ptr";
         break;
         case cursor::hand:
-            cursor_id = "hand";
+            cursor_id = "hand2";
         break;
         case cursor::ibeam:
             cursor_id = "xterm";
         break;
         case cursor::wait:
-            cursor_id = "wait";
+            cursor_id = "watch";
         break;
         case cursor::size_nwse:
             cursor_id = "top_left_corner";
@@ -108,6 +108,7 @@ void set_cursor(system_context &context, cursor cursor_)
         if (cursor != XCB_CURSOR_NONE)
         {
             xcb_change_window_attributes(context.connection, context.wnd, XCB_CW_CURSOR, &cursor);
+            xcb_flush(context.connection);
         }
         xcb_cursor_context_free(ctx);
     }
