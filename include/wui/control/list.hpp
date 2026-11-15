@@ -179,6 +179,8 @@ private:
 
     bool has_scrollbar();
 
+    int32_t item_at(int32_t y) const;
+
     void update_selected_item(int32_t y);
     void update_active_item(int32_t y);
 

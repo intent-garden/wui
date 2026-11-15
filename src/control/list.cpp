@@ -17,6 +17,7 @@
 #include <wui/common/flag_helpers.hpp>
 
 #include <algorithm>
+#include <limits>
 
 namespace wui
 {
@@ -625,6 +626,7 @@ void list::set_column_width(int32_t n_column, int32_t width)
 
 int32_t list::get_item_height(int32_t n_item) const
 {
+    if (n_item < 0 || n_item >= item_count) return -1;
     int32_t height = -1;
     if (item_height_callback)
     {
@@ -635,7 +637,7 @@ int32_t list::get_item_height(int32_t n_item) const
 
 void list::set_item_count(int32_t count)
 {
-    item_count = count;
+    item_count = std::max(0, count);
 
     update_scroll_area();
 
@@ -688,15 +690,11 @@ int32_t list::get_item_top(int32_t n_item) const
         return 0;
     }
 
-    int32_t top = 0;
-
-    for (int32_t i = 0; i != n_item; ++i)
-    {
-        auto height = get_item_height(i);
-        top += height != -1 ? height : 0;
-    }
-
-    return top;
+    int64_t top = 0;
+    const auto end = std::min(n_item, item_count);
+    for (int32_t i = 0; i < end; ++i)
+        top += std::max(0, get_item_height(i));
+    return static_cast<int32_t>(std::min<int64_t>(top, std::numeric_limits<int32_t>::max()));
 }
 
 void list::set_draw_callback(std::function<void(graphic&, int32_t, rect, item_state state)> draw_callback_)
@@ -821,142 +819,81 @@ void list::draw_titles(graphic &gr_)
 
 void list::draw_items(graphic &gr_)
 {
-    if (!draw_callback || position_.height() == 0)
+    if (!draw_callback || position_.height() <= 0 || position_.width() <= 0) return;
+
+    // Accumulate heights once. Calling get_item_top for every candidate row
+    // repeatedly remeasures the entire prefix and becomes quadratic on history.
+    const auto scroll_pos = vert_scroll->get_scroll_pos();
+    const auto header = std::max(0, title_height);
+    int64_t top = static_cast<int64_t>(header) - scroll_pos;
+    const int32_t right = position_.width() - (has_scrollbar()
+        ? (vert_scroll->get_scroll_view() == scroll_view::full ? 14 : 3) : 0);
+    for (int32_t item = 0; item < item_count && top < position_.height(); ++item)
     {
-        return;
-    }
-
-    int32_t first_item = -1, item_bottom = 0;
-    auto scroll_pos = vert_scroll->get_scroll_pos();
-    while (scroll_pos >= item_bottom && first_item < item_count)
-    {
-        ++first_item;
-        item_bottom = get_item_top(first_item) + get_item_height(first_item);
-    }
-
-    int32_t last_item = -1, item_top = 0;
-    while (position_.height() > item_top && last_item < item_count)
-    {
-        ++last_item;
-        item_top = get_item_top(last_item) - scroll_pos;
-    }
-
-    if (last_item < first_item || last_item == first_item)
-    {
-        return;
-    }
-
-    if (last_item > item_count)
-    {
-        last_item = item_count;
-    }
-
-    int32_t top_ = title_height - scroll_pos,
-        left = 0,
-        right = position_.width();
-
-    for (auto item = first_item; item != last_item; ++item)
-    {
-        auto item_height = get_item_height(item);
-        auto top = get_item_top(item) + top_;
-
-        rect item_rect = { left, top, right - (has_scrollbar() ? (vert_scroll->get_scroll_view() == scroll_view::full ? 14 : 3) : 0), top + item_height };
-
-        item_state state = item_state::normal;
-
-        if (item == active_item_)
+        const auto height = std::max(0, get_item_height(item));
+        const auto bottom = top + height;
+        if (height > 0 && bottom > header)
         {
-            state = item_state::active;
+            rect item_rect{0, static_cast<int32_t>(top), right,
+                static_cast<int32_t>(std::min<int64_t>(bottom, std::numeric_limits<int32_t>::max()))};
+            item_state state = item_state::normal;
+            if (item == active_item_) state = item_state::active;
+            if (item == selected_item_) state = item_state::selected;
+            draw_callback(gr_, item, item_rect, state);
         }
-        if (item == selected_item_)
-        {
-            state = item_state::selected;
-        }
-
-        draw_callback(gr_, item, item_rect, state);
+        top = bottom;
     }
 }
 
 bool list::has_scrollbar()
 {
-    return scroll_area + position_.height() > position_.height();
+    return scroll_area > 0;
+}
+
+int32_t list::item_at(int32_t y) const
+{
+    const int64_t offset = static_cast<int64_t>(y) - position().top
+        - std::max(0, title_height) + vert_scroll->get_scroll_pos();
+    if (offset < 0) return -1;
+    int64_t top = 0;
+    for (int32_t item = 0; item < item_count; ++item)
+    {
+        const auto height = std::max(0, get_item_height(item));
+        const auto bottom = top + height;
+        if (height > 0 && offset < bottom) return item;
+        top = bottom;
+    }
+    return -1;
 }
 
 void list::update_selected_item(int32_t y)
 {
-    auto scroll_pos = vert_scroll->get_scroll_pos();
-
-    auto pos = (y - position().top - title_height) + scroll_pos;
-
-    int32_t item = -1, item_start = 0, item_end = 0;
-    while (item != item_count)
-    {
-        if (item_start <= pos && item_end > pos)
-        {
-            break;
-        }
-        else
-        {
-            ++item;
-        }
-        item_start = get_item_top(item);
-        
-        auto height = get_item_height(item);
-        item_end = height != -1 ? item_start + height : 0;
-    }
-
+    const auto item = item_at(y);
     if (item != selected_item_)
     {
-        int32_t old_selected = selected_item_;
-
-        selected_item_ = item < item_count ? item : -1;
-
+        const auto old_selected = selected_item_;
+        selected_item_ = item;
         redraw_item(old_selected);
         redraw_item(selected_item_);
-
-        if (item_change_callback)
-        {
-            item_change_callback(selected_item_);
-        }
+        if (item_change_callback) item_change_callback(selected_item_);
     }
 }
 
 void list::update_active_item(int32_t y)
 {
-    int32_t prev_active_item_ = active_item_;
-
-    auto scroll_pos = vert_scroll->get_scroll_pos();
-
-    auto pos = (y - position().top - title_height) + scroll_pos;
-
-    active_item_ = -1;
-
-    int32_t item_start = 0, item_end = 0;
-    while (active_item_ != item_count)
+    const auto item = item_at(y);
+    if (active_item_ != item)
     {
-        if (item_start <= pos && item_end > pos)
-        {
-            break;
-        }
-        else
-        {
-            ++active_item_;
-        }
-        item_start = get_item_top(active_item_);
-
-        auto height = get_item_height(active_item_);
-        item_end = height != -1 ? item_start + height : 0;
-    }
-   
-    if (prev_active_item_ != active_item_)
-    {
+        active_item_ = item;
         redraw();
     }
 }
 
 void list::update_scroll_area()
 {
-    scroll_area = title_height + get_item_top(item_count - 1) + get_item_height(item_count - 1) - position_.height();
+    const int64_t total = static_cast<int64_t>(std::max(0, title_height)) + get_item_top(item_count);
+    scroll_area = static_cast<int32_t>(std::min<int64_t>(
+        std::max<int64_t>(0, total - position_.height()), std::numeric_limits<int32_t>::max()));
     if (scroll_area < 0)
     {
         scroll_area = 0;

@@ -1,3 +1,4 @@
+#include "../common/list_layout.hpp"
 // Copyright (c) 2026 Intent Garden Org. Boost Software License 1.0.
 #import <Cocoa/Cocoa.h>
 #include <wui/framework/framework.hpp>
@@ -112,6 +113,7 @@ int main()
         auto before=wui::measure_text("Привет, macOS!",font);
         CHECK(before.width()>0 && before.height()>0);
         CHECK(wui::measure_text("Hello  ",font).width()>wui::measure_text("Hello",font).width());
+        CHECK(run_list_layout_tests());
         CHECK(run_input_selection_tests());
         CHECK(run_button_state_tests());
         auto w=std::make_shared<wui::window>();

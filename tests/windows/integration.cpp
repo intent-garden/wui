@@ -1,3 +1,4 @@
+#include "../common/list_layout.hpp"
 // Copyright (c) 2026 Intent Garden Org. Boost Software License 1.0.
 #include <wui/system/timer.hpp>
 #include <wui/framework/framework.hpp>
@@ -168,6 +169,7 @@ int main()
         // Exercise the same mouse/focus/scroll timer cancellation path as the
         // simple example, including animation and repeated resizes.
         CHECK(wui::set_default_theme_from_file("dark", WUI_SOURCE_DIR "/examples/simple/res/dark.json"));
+        CHECK(run_list_layout_tests());
         auto window = std::make_shared<wui::window>();
         std::string content;
         for (int i = 0; i < 50; ++i) content += "Line " + std::to_string(i) + "\n";
