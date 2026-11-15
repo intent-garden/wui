@@ -1,3 +1,4 @@
+#include "../common/list_layout.hpp"
 // Copyright (c) 2026 Intent Garden Org. Boost Software License 1.0.
 #include <wui/control/text.hpp>
 #include <wui/framework/framework.hpp>
@@ -65,6 +66,7 @@ int main()
         bool reopen_on_close = false;
         on_ui([&] {
             CHECK(wui::set_default_theme_from_file("dark", WUI_SOURCE_DIR "/examples/simple/res/dark.json"));
+            CHECK(run_list_layout_tests());
             window = std::make_shared<wui::window>();
             label = std::make_shared<painted_text>();
             window->add_control(label, {0, 0, 250, 200});

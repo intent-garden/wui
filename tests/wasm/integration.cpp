@@ -1,3 +1,4 @@
+#include "../common/list_layout.hpp"
 // Copyright (c) 2026 Intent Garden Org. Boost Software License 1.0.
 #include <wui/framework/framework.hpp>
 #include <wui/window/window.hpp>
@@ -70,6 +71,7 @@ int main()
     wui::framework::init();
     assert(wui::set_default_theme_from_file("dark","res/dark.json"));
     assert(wui::set_locale_from_file(wui::locale_type::eng,"English","res/en_locale.json"));
+    assert(run_list_layout_tests());
     assert(run_input_selection_tests());
     assert(run_button_state_tests());
     root=std::make_shared<wui::window>();
