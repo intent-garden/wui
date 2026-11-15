@@ -319,6 +319,13 @@ void macos_window_backend::close(window& w,bool notify)
 }
 void macos_window_backend::invalidate(window& w,rect p)
 {
+    if (![NSThread isMainThread]) {
+        auto weak = w.weak_from_this();
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (auto owner = weak.lock(); owner && owner->context_.valid()) invalidate(*owner, p);
+        });
+        return;
+    }
     NSView *view=(__bridge NSView *)w.context_.native_view;
     if(view) [view setNeedsDisplayInRect:NSMakeRect(p.left,p.top,std::max(0,p.width()),std::max(0,p.height()))];
 }

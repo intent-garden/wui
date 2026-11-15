@@ -189,7 +189,12 @@ int main()
                 [(id<NSTextInputClient>)view insertText:@"日本" replacementRange:NSMakeRange(NSNotFound,0)];
                 CHECK(![(id<NSTextInputClient>)view hasMarkedText]);
                 CHECK(input->text().find("日本")!=std::string::npos);
-                std::thread emitter([&]{ w->emit_event(42,7); }); emitter.join();
+                std::thread emitter([&]{
+                    // Legacy clients can request redraw from capture/worker threads;
+                    // the AppKit backend must marshal view invalidation to main.
+                    for (int redraw = 0; redraw < 100; ++redraw) w->redraw({0,0,200,100}, true);
+                    w->emit_event(42,7);
+                }); emitter.join();
                 screenshot(view);
             } else if(ticks==2) {
                 NSWindow *native=(__bridge NSWindow *)w->context().native_window;

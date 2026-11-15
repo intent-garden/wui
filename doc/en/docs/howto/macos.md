@@ -64,3 +64,5 @@ Device hotplug notifications are not implemented;
 `enable_device_change_handling(true)` reports this through `window::get_error()`.
 Per-window taskbar visibility has no equivalent in the application-wide Dock.
 Full control accessibility and horizontal trackpad scrolling are not yet implemented.
+
+The optional [native media devices API](media.md) adds microphone, audio output, camera and screen capture for applications that need them.
