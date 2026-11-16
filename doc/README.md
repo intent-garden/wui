@@ -11,8 +11,9 @@ python3 -m http.server 8082 --directory build-docs
 
 Open `/doc/` (English) or `/doc_ru/` (Russian). On Windows activate the virtual
 environment and run `python doc/build.py` or `doc\deploy.cmd` for a local build.
-Both languages build in strict mode. The matching version of the source API is
-required; the documented development features currently live on branch `I-94`.
+Both languages build in strict mode. Use the matching source release, currently `v1.5.261116`; macOS and WASM are
+part of `main`. The public website builds both documentation languages from
+`main` through the workflow in `intent-garden/wui_site`.
 
 Publish using an already configured AWS CLI profile/environment:
 
