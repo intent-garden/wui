@@ -34,6 +34,7 @@ nav:
     - 🌟 Пошаговое руководство: 'article/onboarding.md'
     - Установка: 'howto/setup.md'
     - macOS: 'howto/macos.md'
+    - Устройства macOS: 'howto/media.md'
     - WebAssembly: 'howto/wasm.md'
     - Hello world: 'howto/hello-world.md'
   - Справочник:

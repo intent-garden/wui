@@ -1,3 +1,29 @@
+# 1.5.261116
+1. Add optional experimental macOS native media devices (`WUI_ENABLE_MEDIA=ON`):
+   persistent device IDs, PCM capture/playback, camera and primary-display capture.
+   Negotiate camera frame rates and preserve requested output dimensions.
+2. Dispatch Windows timers on their owning message loop and Linux timers on the
+   X11 event thread. Handle stop/restart, stale callbacks and callback lifetime;
+   remove the Windows scrollbar worker thread.
+3. Coalesce Linux redraw/resize requests and dispatch macOS redraws on the main
+   thread. Initialize Xlib threading before opening the display and use standard
+   X11 cursor names.
+4. Paint lists and hit-test rows without repeated prefix measurement. Regressions
+   cover long lists, nonpositive row heights, scrolling and pointer events.
+5. Add explicit input caret positioning and show the caret immediately on focus.
+   Fix rounded radio/switch geometry.
+6. Add Windows MSVC Debug/Release x Win32/x64 CI and Linux Xvfb Release/ASan/UBSan
+   CI. Fix Windows CMake source selection and avoid the Boost.Nowide binary link
+   dependency. Extend platform integration tests.
+7. Update the roadmap against the implemented features and remaining platform,
+   packaging and accessibility work.
+
+Compatibility: perform a clean rebuild of WUI and every consuming application.
+The timer/scroll object layout has changed; headers and libraries must come from
+one revision. Windows timers must be created on a thread with a message loop;
+Linux timer callbacks now run on the X11 event thread. Native media is optional,
+experimental and currently macOS-only; screen capture requires macOS 12.3+.
+
 # 1.4.260907
 1. Add experimental macOS backend (AppKit, Core Graphics, Core Text, ImageIO),
    Retina buffers, UTF-8/IME input, clipboard, main-thread timers,

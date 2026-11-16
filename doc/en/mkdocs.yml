@@ -35,6 +35,7 @@ nav:
   - Manuals:
     - Installation: 'howto/setup.md'
     - macOS: 'howto/macos.md'
+    - Native media (macOS): 'howto/media.md'
     - WebAssembly: 'howto/wasm.md'
     - Hello world: 'howto/hello-world.md'
 
