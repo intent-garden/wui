@@ -1,8 +1,12 @@
-name: Deploy WUI documentation
+name: Validate WUI documentation
 
 on:
   push:
     branches: [main]
+    paths:
+      - 'doc/**'
+      - '.github/workflows/deploy.yml'
+  pull_request:
     paths:
       - 'doc/**'
       - '.github/workflows/deploy.yml'
@@ -12,27 +16,31 @@ permissions:
   contents: read
 
 concurrency:
-  group: wui-documentation-production
+  group: wui-documentation-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    if: github.ref == 'refs/heads/main'
+  build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
+          python-version: '3.12'
           cache: pip
           cache-dependency-path: doc/requirements.txt
       - name: Install documentation builder
         run: python -m pip install -r doc/requirements.txt
-      - name: Build, publish and verify documentation
-        run: bash doc/deploy.sh
-        env:
-          WUI_SITE_BUCKET: ${{ secrets.YC_BUCKET_NAME }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.YC_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.YC_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ru-central1
+      - name: Build both documentation languages strictly
+        run: python doc/build.py --output build-docs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wui-documentation
+          path: build-docs/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Publication instructions
+        run: |
+          echo 'The public documentation is published with the website by intent-garden/wui_site.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Its daily Pages build reads WUI main; dispatch deploy.yml there for an immediate refresh.' >> "$GITHUB_STEP_SUMMARY"

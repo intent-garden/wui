@@ -15,7 +15,20 @@ Both languages build in strict mode. Use the matching source release, currently 
 part of `main`. The public website builds both documentation languages from
 `main` through the workflow in `intent-garden/wui_site`.
 
-Publish using an already configured AWS CLI profile/environment:
+## GitHub Actions and Pages
+
+The library's workflow validates both languages and saves a documentation artifact.
+The public website is published as one Pages artifact by `intent-garden/wui_site`,
+which reads WUI `main` on every website deployment and daily refresh. To publish
+immediately after a documentation update:
+
+```sh
+gh workflow run deploy.yml --repo intent-garden/wui_site --ref master
+```
+
+## Legacy S3 publication
+
+For a separate S3 mirror, using an already configured AWS CLI profile/environment:
 
 ```sh
 PYTHON_BIN=.venv-docs/bin/python bash doc/deploy.sh --dry-run
@@ -27,4 +40,4 @@ Default target: Yandex Object Storage bucket `libwui.org`. Overrides:
 No credentials are stored in the scripts. Both languages must build before upload.
 Only `doc/` and `doc_ru/` are uploaded; no remote objects are deleted. HTML uses
 UTF-8 and all uploads request cache revalidation. Key uploaded files are downloaded
-and compared with the build. The website and WASM examples deploy independently.
+and compared with the build. These legacy scripts do not update the GitHub Pages website or its WASM examples.
