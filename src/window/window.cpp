@@ -1290,20 +1290,17 @@ void window::set_root_window(bool yes)
 
 void window::send_event_to_control(const std::shared_ptr<i_control> &control_, const event &ev)
 {
-    std::function<void(const event&)> callback;
+    std::vector<event_subscriber> subs;
     {
         std::lock_guard<std::mutex> lock(subscribers_mutex_);
-        auto it = std::find_if(subscribers_.begin(), subscribers_.end(), [control_, ev](const event_subscriber &es) {
-            return flag_is_set(es.event_types, ev.type) && es.control == control_;
-        });
-        if (it != subscribers_.end())
-        {
-            callback = it->receive_callback;
-        }
+        subs = subscribers_;
     }
-    if (callback)
+    for (auto &sub : subs)
     {
-        callback(ev);
+        if (sub.control == control_ && flag_is_set(sub.event_types, ev.type) && sub.receive_callback)
+        {
+            sub.receive_callback(ev);
+        }
     }
 }
 
