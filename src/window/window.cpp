@@ -1348,12 +1348,16 @@ void window::send_event_to_plains_and_control(const event& ev, const std::shared
     }
 }
 
-void window::send_mouse_event(const mouse_event &ev)
+void window::send_mouse_event(mouse_event ev)
 {
     if (!enabled_ && !docked_control)
     {
         return;
     }
+
+#ifdef __linux__
+    ev.modifier = key_modifier;
+#endif
 
     if (active_control && !active_control->position().in(ev.x, ev.y))
     {
