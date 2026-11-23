@@ -130,9 +130,11 @@ bool config_impl_ini::load_values()
         auto comment_pos = line.find(";");
         auto beg_bracket = line.find("["), end_bracket = line.find("]");
         if (beg_bracket != std::string::npos && end_bracket != std::string::npos &&
+            beg_bracket == line.find_first_not_of(" \t\r") &&
+            end_bracket > beg_bracket &&
             comment_pos > beg_bracket && comment_pos > end_bracket)
         {
-            section = trim_copy(line.substr(beg_bracket + 1, end_bracket - 1));
+            section = trim_copy(line.substr(beg_bracket + 1, end_bracket - beg_bracket - 1));
             continue;
         }
 
